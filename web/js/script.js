@@ -12,36 +12,31 @@ function getLocation() {
         navigator.geolocation.getCurrentPosition(
             pos => resolve([pos.coords.latitude, pos.coords.longitude]),
             error => reject(error),
-            {enableHighAccuracy : false}
+            {enableHighAccuracy : true}
         );
     });
 }
 
-// Retourne la taille de la surface de rayon x
-// aire = π × (diam/2)^2
-// x est un rayon donc = à diam / 2
-function toSurface(x){
-    return Math.PI * (x)**2;
+const RADIUS_METERS = 2000;
+
+/* Define the distance between 2 coords (vol d'oiseau)
+    HAVERSINE FORMULA */
+function distanceMeters([lat1, lng1], [lat2, lng2]) {
+    const R = 6371000; // Earth rayon
+    const toRad = x => x * Math.PI / 180;
+
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+
+    const distanceHaversineFormula =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+    const distance = 2 * Math.atan2(Math.sqrt(distanceHaversineFormula), Math.sqrt(1 - distanceHaversineFormula));
+    return R * distance;
 }
 
-// Pour la surface en param, retourne la taille du rayon
-// diam = 2 × √(aire / π)
-// rayon = diam * 2 donc = √(aire / π)
-function fromSurface(s){
-    return Math.sqrt(s / Math.PI);
-}
-
-const RADIUS = 0.045;
-const SURFACE_MAX = toSurface(RADIUS);
-const DEGREE_TO_METERS = 111000; // Converting approximatly
-const RADIUS_METERS = fromSurface(SURFACE_MAX) * DEGREE_TO_METERS;
-
-
-function distanceSurface([lat1, lng1], [lat2, lng2]) {
-    const dx = lng2 - lng1;
-    const dy = lat2 - lat1;
-    return toSurface(Math.sqrt(dx*dx + dy*dy));
-}
 
 // Useless columns of our dataset
 const columnsToRemove = [
@@ -73,6 +68,7 @@ window.onload = async () => {
     let userPosition;
     try {
         userPosition = await getLocation();
+        console.log(userPosition);
     } catch (error) {
         console.error(error);
         userPosition = [48.85, 2.35]; // Coord of Paris if no response 
@@ -81,14 +77,14 @@ window.onload = async () => {
     let geoLayer = L.geoJSON(cleanedData, {
         filter: feature => {
             const [lng, lat] = feature.geometry.coordinates;
-            const distance = distanceSurface(userPosition, [lat, lng]);
-            return distance <= SURFACE_MAX;
+            const distance = distanceMeters(userPosition, [lat, lng]);
+            return distance <= RADIUS_METERS;
         }
     });
 
     let map = L.map("map", {
         center: userPosition,
-        zoom: 12,
+        zoom: 14,
         layers: [layer, geoLayer]
     });
 
