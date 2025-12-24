@@ -39,6 +39,15 @@ function distanceMeters([lat1, lng1], [lat2, lng2]) {
     return R * distance;
 }
 
+function addEventOnPoint(feature, layer) {
+    layer.on("click", () => {
+        console.log("clic");
+    });
+
+    layer.on("mouseover", () => {
+        console.log("mouse over");
+    });
+}
 
 // Useless columns of our dataset
 const columnsToRemove = [
@@ -82,7 +91,8 @@ window.onload = async () => {
             const [lng, lat] = feature.geometry.coordinates;
             const distance = distanceMeters(userPosition, [lat, lng]);
             return distance <= RADIUS_METERS;
-        }
+        },
+        onEachFeature: addEventOnPoint
     });
 
     let map = L.map("map", {
