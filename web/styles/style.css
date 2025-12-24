@@ -3,3 +3,18 @@
     height: 600px;
     border: 1px solid black;
 }
+
+
+
+/* #TODO : Position à mettre en relative selon la map */
+#infosDAB{
+    width: 600px;
+    height: 400px;
+    border: 1px solid black;
+    float: left;
+    display:none;
+}
+
+main{
+    display: flex;
+}

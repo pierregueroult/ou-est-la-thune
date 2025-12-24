@@ -40,8 +40,22 @@ function distanceMeters([lat1, lng1], [lat2, lng2]) {
 }
 
 function addEventOnPoint(feature, layer) {
+    
     layer.on("click", () => {
         console.log("clic");
+        document.getElementById("infosDAB").style.display = "block";
+        // Adding the informations to the fields
+        const props = feature.properties;
+        document.getElementById("bank_name").innerText = "Distributeur " + props.name;
+        document.getElementById("bank_brand").innerText = "Banque " + props.brand;
+        document.getElementById("bank_type").innerText = "Type " + props.type;
+        document.getElementById("bank_operator").innerText = "Opérateur : " + props.operator;
+        document.getElementById("bank_wheelchair").innerText = "Accessible aux personnes à mobilité réduite : " + props.wheelchair;
+        document.getElementById("bank_opening_hours").innerText = "Ouverte de " + props.opening_hours;
+        document.getElementById("bank_location").innerText = "Située " + 
+            props.meta_name_com + " / " + props.meta_name_dep + " / " + props.meta_name_reg;
+        document.getElementById("bank_osm_url").innerText = "Lien OpenStreetMap : " + props.meta_osm_url;
+
     });
 
     layer.on("mouseover", () => {
