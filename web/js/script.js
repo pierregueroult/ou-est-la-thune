@@ -19,21 +19,23 @@ function getLocation() {
 
 const RADIUS_METERS = 2000;
 
-/* Define the distance between 2 coords (vol d'oiseau)
+/* Define the distance between 2 coords (crow fly)
     HAVERSINE FORMULA */
 function distanceMeters([lat1, lng1], [lat2, lng2]) {
-    const R = 6371000; // Earth rayon
+    const R = 6371000; // Earth radius (rayon)
     const toRad = x => x * Math.PI / 180;
 
     const dLat = toRad(lat2 - lat1);
     const dLng = toRad(lng2 - lng1);
 
     const distanceHaversineFormula =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.sin(dLat / 2) **2 +
         Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        Math.sin(dLng / 2) **2;
 
-    const distance = 2 * Math.atan2(Math.sqrt(distanceHaversineFormula), Math.sqrt(1 - distanceHaversineFormula));
+    const distance =
+        2 * Math.atan2(Math.sqrt(distanceHaversineFormula),
+            Math.sqrt(1 - distanceHaversineFormula));
     return R * distance;
 }
 
@@ -68,10 +70,11 @@ window.onload = async () => {
     let userPosition;
     try {
         userPosition = await getLocation();
-        console.log(userPosition);
     } catch (error) {
         console.error(error);
-        userPosition = [48.85, 2.35]; // Coord of Paris if no response 
+        userPosition = [48.85, 2.35]; // Coord of Paris if no response
+
+        //TODO Si l'user ne répond pas, on récupère la loc de l'IP
     }
 
     let geoLayer = L.geoJSON(cleanedData, {
