@@ -1,19 +1,385 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Où est la thune ?</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-    <link rel="stylesheet" href="./styles/style.css">
-</head>
-<body>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Où est la thune ?</title>
+        <link
+            rel="stylesheet"
+            href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+            crossorigin=""
+        />
+        <script
+            src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            crossorigin=""
+        ></script>
+        <link rel="stylesheet" href="./styles/style.css" />
+    </head>
+    <body>
+        <div id="map"></div>
 
+        <!-- Sidebar principale -->
+        <aside class="sidebar">
+            <header>
+                <button
+                    class="icon background"
+                    aria-label="Ouvrir le menu principal"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path d="M4 5h16" />
+                        <path d="M4 12h16" />
+                        <path d="M4 19h16" />
+                    </svg>
+                </button>
+                <h1>Ou est la thune ?</h1>
+            </header>
 
+            <!-- Section de recherche -->
+            <section class="search-section">
+                <form>
+                    <div class="input-group-container">
+                        <div class="timeline-icons" aria-hidden="true">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <line x1="2" x2="5" y1="12" y2="12" />
+                                <line x1="19" x2="22" y1="12" y2="12" />
+                                <line x1="12" x2="12" y1="2" y2="5" />
+                                <line x1="12" x2="12" y1="19" y2="22" />
+                                <circle cx="12" cy="12" r="7" />
+                            </svg>
 
-    <div id="map"></div>
-    
-    <script src="./js/script.js"></script>
-</body>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path
+                                    d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"
+                                />
+                                <circle cx="12" cy="10" r="3" />
+                            </svg>
+                        </div>
+
+                        <div class="inputs-wrapper">
+                            <label for="start-point" class="sr-only"
+                                >Point de départ</label
+                            >
+                            <input
+                                type="text"
+                                id="start-point"
+                                name="start"
+                                class="input-field"
+                                placeholder="Point de départ"
+                            />
+
+                            <label for="bank-select" class="sr-only"
+                                >Sélectionner une banque</label
+                            >
+                            <input
+                                type="text"
+                                id="bank-select"
+                                name="bank"
+                                class="input-field"
+                                placeholder="Sélectionner une banque"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="divider" role="presentation"></div>
+
+                    <button type="submit" class="btn-primary">
+                        Le distributeur le plus proche
+                    </button>
+
+                    <div class="divider" role="presentation"></div>
+                </form>
+            </section>
+
+            <section class="results-section" aria-labelledby="results-heading">
+                <div class="section-header">
+                    <h2 id="results-heading">Populaires autour</h2>
+                    <a href="#" class="see-more">Voir plus</a>
+                </div>
+
+                <ul class="card-list">
+                    <li>
+                        <article class="card">
+                            <div class="card-left">
+                                <div
+                                    class="bank-logo"
+                                    role="img"
+                                    aria-label="Logo Société Générale"
+                                ></div>
+                                <div class="bank-info">
+                                    <h3 class="bank-name">Société Générale</h3>
+                                    <span class="bank-city"
+                                        >Champs-sur-marne</span
+                                    >
+                                </div>
+                            </div>
+                            <a
+                                href="#"
+                                class="distance-badge"
+                                aria-label="Naviguer vers Société Générale à 1.8 Kilomètres"
+                            >
+                                1.8 Km
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    class="lucide lucide-navigation-icon lucide-navigation"
+                                >
+                                    <polygon
+                                        points="3 11 22 2 13 21 11 13 3 11"
+                                    />
+                                </svg>
+                            </a>
+                        </article>
+                    </li>
+
+                    <li>
+                        <article class="card">
+                            <div class="card-left">
+                                <div
+                                    class="bank-logo"
+                                    role="img"
+                                    aria-label="Logo BNP Paribas"
+                                ></div>
+                                <div class="bank-info">
+                                    <h3 class="bank-name">BNP Paribas</h3>
+                                    <span class="bank-city">Cesson</span>
+                                </div>
+                            </div>
+                            <a
+                                href="#"
+                                class="distance-badge"
+                                aria-label="Naviguer vers BNP Paribas à 3.2 Kilomètres"
+                            >
+                                3.2 Km
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    class="lucide lucide-navigation-icon lucide-navigation"
+                                >
+                                    <polygon
+                                        points="3 11 22 2 13 21 11 13 3 11"
+                                    />
+                                </svg>
+                            </a>
+                        </article>
+                    </li>
+
+                    <li>
+                        <article class="card">
+                            <div class="card-left">
+                                <div
+                                    class="bank-logo"
+                                    role="img"
+                                    aria-label="Logo Crédit Agricole"
+                                ></div>
+                                <div class="bank-info">
+                                    <h3 class="bank-name">Crédit Agricole</h3>
+                                    <span class="bank-city">Lyon</span>
+                                </div>
+                            </div>
+                            <a
+                                href="#"
+                                class="distance-badge"
+                                aria-label="Naviguer vers Crédit Agricole à 2.5 Kilomètres"
+                            >
+                                2.5 Km
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    class="lucide lucide-navigation-icon lucide-navigation"
+                                >
+                                    <polygon
+                                        points="3 11 22 2 13 21 11 13 3 11"
+                                    />
+                                </svg>
+                            </a>
+                        </article>
+                    </li>
+                </ul>
+            </section>
+        </aside>
+
+        <aside class="controls">
+            <div class="controls-top">
+                <button
+                    class="background icon"
+                    aria-label="Ouvrir le menu"
+                    title="Ouvrir le menu"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                    >
+                        <circle cx="12" cy="12" r="1" />
+                        <circle cx="12" cy="5" r="1" />
+                        <circle cx="12" cy="19" r="1" />
+                    </svg>
+                </button>
+                <button
+                    class="background text"
+                    id="share"
+                    aria-label="Partager la carte"
+                    title="Partager la carte"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                    >
+                        <circle cx="18" cy="5" r="3" />
+                        <circle cx="6" cy="12" r="3" />
+                        <circle cx="18" cy="19" r="3" />
+                        <line x1="8.59" x2="15.42" y1="13.51" y2="17.49" />
+                        <line x1="15.41" x2="8.59" y1="6.51" y2="10.49" />
+                    </svg>
+                    <span>Share</span>
+                </button>
+            </div>
+
+            <div class="controls-bottom">
+                <button
+                    id="locate"
+                    class="primary icon"
+                    aria-label="Me localiser"
+                    title="Me localiser"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                    >
+                        <line x1="2" x2="5" y1="12" y2="12" />
+                        <line x1="19" x2="22" y1="12" y2="12" />
+                        <line x1="12" x2="12" y1="2" y2="5" />
+                        <line x1="12" x2="12" y1="19" y2="22" />
+                        <circle cx="12" cy="12" r="7" />
+                    </svg>
+                </button>
+
+                <div
+                    class="controls-zoom"
+                    role="group"
+                    aria-label="Contrôles de zoom"
+                >
+                    <button
+                        id="zoom-in"
+                        class="background icon"
+                        aria-label="Zoomer"
+                        title="Zoomer"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                        >
+                            <path d="M5 12h14" />
+                            <path d="M12 5v14" />
+                        </svg>
+                    </button>
+                    <button
+                        id="zoom-out"
+                        class="background icon"
+                        aria-label="Dézoomer"
+                        title="Dézoomer"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                        >
+                            <path d="M5 12h14" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <script src="./js/script.js"></script>
+    </body>
 </html>
