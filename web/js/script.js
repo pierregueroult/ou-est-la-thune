@@ -7,11 +7,27 @@ function removeColumnsFromGeoJSON(geojson, columnsToRemove) {
   return geojson;
 }
 
+/**
+ * Get user location with IP fallback
+ * First tries browser geolocation, falls back to IP-based location if denied
+ */
 function getLocation() {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     navigator.geolocation.getCurrentPosition(
-      (pos) => resolve([pos.coords.latitude, pos.coords.longitude]),
-      (error) => reject(error),
+      (pos) => {
+        console.log("Using browser geolocation");
+        resolve([pos.coords.latitude, pos.coords.longitude]);
+      },
+      async (error) => {
+        console.warn("Browser geolocation failed:", error.message);
+        console.log("Falling back to IP-based geolocation...");
+        try {
+          const ipLocation = await getLocationFromIP();
+          resolve(ipLocation);
+        } catch (ipError) {
+          reject(ipError);
+        }
+      },
       { enableHighAccuracy: true },
     );
   });
@@ -72,10 +88,8 @@ window.onload = async () => {
   try {
     userPosition = await getLocation();
   } catch (error) {
-    console.error(error);
-    userPosition = [48.85, 2.35]; // Coord of Paris if no response
-
-    //TODO Si l'user ne répond pas, on récupère la loc de l'IP
+    console.error("All geolocation methods failed:", error);
+    userPosition = [48.85, 2.35]; // Coord of Paris if all methods fail
   }
 
   let geoLayer = L.geoJSON(cleanedData, {
@@ -193,76 +207,4 @@ window.onload = async () => {
       map.setView([lat, lng], zoom);
     }
   }
-
-  // Gestion du bouton menu de la sidebar
-  const menuButton = document.querySelector(".sidebar header button");
-  if (menuButton) {
-    menuButton.addEventListener("click", () => {
-      console.log("Menu clicked - À implémenter");
-      // TODO: Implémenter l'ouverture d'un menu latéral
-    });
-  }
-
-  // Gestion du formulaire de recherche
-  const searchForm = document.querySelector(".search-section form");
-  if (searchForm) {
-    searchForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const startPoint = document.getElementById("start-point").value;
-      const bankSelect = document.getElementById("bank-select").value;
-
-      console.log("Recherche:", { startPoint, bankSelect });
-      // TODO: Implémenter la logique de recherche
-    });
-  }
-
-  // Gestion des clics sur les cartes de banques
-  const cards = document.querySelectorAll(".card");
-  cards.forEach((card) => {
-    card.addEventListener("click", (e) => {
-      // Ne pas déclencher si on clique sur le badge de distance
-      if (e.target.closest(".distance-badge")) {
-        return;
-      }
-
-      const bankName = card.querySelector(".bank-name")?.textContent;
-      const bankCity = card.querySelector(".bank-city")?.textContent;
-      console.log("Carte sélectionnée:", { bankName, bankCity });
-      // TODO: Centrer la carte sur la banque sélectionnée
-    });
-  });
-
-  // Gestion des badges de distance (navigation)
-  const distanceBadges = document.querySelectorAll(".distance-badge");
-  distanceBadges.forEach((badge) => {
-    badge.addEventListener("click", (e) => {
-      e.preventDefault();
-      const card = badge.closest(".card");
-      const bankName = card.querySelector(".bank-name")?.textContent;
-      console.log("Navigation vers:", bankName);
-      // TODO: Ouvrir l'itinéraire vers la banque
-    });
-  });
-
-  // Animation d'apparition des cartes au scroll
-  const observerOptions = {
-    threshold: 0.1,
-    rootMargin: "0px 0px -50px 0px",
-  };
-
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.style.opacity = "1";
-        entry.target.style.transform = "translateY(0)";
-      }
-    });
-  }, observerOptions);
-
-  document.querySelectorAll(".card").forEach((card) => {
-    card.style.opacity = "0";
-    card.style.transform = "translateY(20px)";
-    card.style.transition = "opacity 0.3s ease, transform 0.3s ease";
-    observer.observe(card);
-  });
 };
