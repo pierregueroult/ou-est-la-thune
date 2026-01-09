@@ -2,6 +2,7 @@
 
 const { transformInputToSource } = require("./transform.js");
 const ipFranceTransformer = require("./transformers/ip-france.js");
+const bankFranceTransformer = require("./transformers/bank-france.js");
 
 async function main() {
   console.log("Starting transformations...");
@@ -14,7 +15,12 @@ async function main() {
       ipFranceTransformer,
     );
 
-    // TODO: les autres transformations genre prendre que les data nécessaire dans le truc de la banque
+    // Transformation 2: Nettoyage du fichier des banks (on retire ce dont à n'a pas besoin)
+    await transformInputToSource(
+      "osm-france-bank.geojson",
+      "osm-france-bank.geojson",
+      bankFranceTransformer,
+    );
 
     console.log("All transformations completed!");
   } catch (error) {

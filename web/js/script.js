@@ -1,12 +1,3 @@
-function removeColumnsFromGeoJSON(geojson, columnsToRemove) {
-  geojson.features.forEach((feature) => {
-    columnsToRemove.forEach((col) => {
-      delete feature.properties[col];
-    });
-  });
-  return geojson;
-}
-
 const RADIUS_METERS = 2000;
 
 /* Define the distance between 2 coords (crow fly)
@@ -31,20 +22,6 @@ function distanceMeters([lat1, lng1], [lat2, lng2]) {
   return R * distance;
 }
 
-// Useless columns of our dataset
-const columnsToRemove = [
-  "bank_id_code",
-  "brand_wikidata",
-  "meta_code_com",
-  "meta_code_dep",
-  "meta_code_reg",
-  "meta_first_update",
-  "meta_last_update",
-  "meta_osm_id",
-  "meta_users_number",
-  "meta_versions_number",
-];
-
 window.onload = async () => {
   let layer = L.tileLayer(
     "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
@@ -56,8 +33,6 @@ window.onload = async () => {
   let response = await fetch("../data/osm-france-bank.geojson");
   let data = await response.json();
 
-  let cleanedData = removeColumnsFromGeoJSON(data, columnsToRemove);
-
   let userPosition;
   try {
     userPosition = await getLocation();
@@ -66,7 +41,7 @@ window.onload = async () => {
     userPosition = [48.85, 2.35]; // Coord of Paris if all methods fail
   }
 
-  let geoLayer = L.geoJSON(cleanedData, {
+  let geoLayer = L.geoJSON(data, {
     filter: (feature) => {
       const [lng, lat] = feature.geometry.coordinates;
       const distance = distanceMeters(userPosition, [lat, lng]);
