@@ -1,0 +1,6 @@
+scripts/results/*
+
+!scripts/results/.gitkeep
+
+.DS_Store
+TODO.md
