@@ -1,22 +1,3 @@
-function removeColumnsFromGeoJSON(geojson, columnsToRemove) {
-  geojson.features.forEach((feature) => {
-    columnsToRemove.forEach((col) => {
-      delete feature.properties[col];
-    });
-  });
-  return geojson;
-}
-
-function getLocation() {
-  return new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve([pos.coords.latitude, pos.coords.longitude]),
-      (error) => reject(error),
-      { enableHighAccuracy: true },
-    );
-  });
-}
-
 const RADIUS_METERS = 2000;
 
 /* Define the distance between 2 coords (crow fly)
@@ -41,20 +22,6 @@ function distanceMeters([lat1, lng1], [lat2, lng2]) {
   return R * distance;
 }
 
-// Useless columns of our dataset
-const columnsToRemove = [
-  "bank_id_code",
-  "brand_wikidata",
-  "meta_code_com",
-  "meta_code_dep",
-  "meta_code_reg",
-  "meta_first_update",
-  "meta_last_update",
-  "meta_osm_id",
-  "meta_users_number",
-  "meta_versions_number",
-];
-
 window.onload = async () => {
   let layer = L.tileLayer(
     "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
@@ -66,19 +33,9 @@ window.onload = async () => {
   let response = await fetch("../data/osm-france-bank.geojson");
   let data = await response.json();
 
-  let cleanedData = removeColumnsFromGeoJSON(data, columnsToRemove);
+  let userPosition = await getLocation();
 
-  let userPosition;
-  try {
-    userPosition = await getLocation();
-  } catch (error) {
-    console.error(error);
-    userPosition = [48.85, 2.35]; // Coord of Paris if no response
-
-    //TODO Si l'user ne répond pas, on récupère la loc de l'IP
-  }
-
-  let geoLayer = L.geoJSON(cleanedData, {
+  let geoLayer = L.geoJSON(data, {
     filter: (feature) => {
       const [lng, lat] = feature.geometry.coordinates;
       const distance = distanceMeters(userPosition, [lat, lng]);
@@ -193,76 +150,4 @@ window.onload = async () => {
       map.setView([lat, lng], zoom);
     }
   }
-
-  // Gestion du bouton menu de la sidebar
-  const menuButton = document.querySelector(".sidebar header button");
-  if (menuButton) {
-    menuButton.addEventListener("click", () => {
-      console.log("Menu clicked - À implémenter");
-      // TODO: Implémenter l'ouverture d'un menu latéral
-    });
-  }
-
-  // Gestion du formulaire de recherche
-  const searchForm = document.querySelector(".search-section form");
-  if (searchForm) {
-    searchForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const startPoint = document.getElementById("start-point").value;
-      const bankSelect = document.getElementById("bank-select").value;
-
-      console.log("Recherche:", { startPoint, bankSelect });
-      // TODO: Implémenter la logique de recherche
-    });
-  }
-
-  // Gestion des clics sur les cartes de banques
-  const cards = document.querySelectorAll(".card");
-  cards.forEach((card) => {
-    card.addEventListener("click", (e) => {
-      // Ne pas déclencher si on clique sur le badge de distance
-      if (e.target.closest(".distance-badge")) {
-        return;
-      }
-
-      const bankName = card.querySelector(".bank-name")?.textContent;
-      const bankCity = card.querySelector(".bank-city")?.textContent;
-      console.log("Carte sélectionnée:", { bankName, bankCity });
-      // TODO: Centrer la carte sur la banque sélectionnée
-    });
-  });
-
-  // Gestion des badges de distance (navigation)
-  const distanceBadges = document.querySelectorAll(".distance-badge");
-  distanceBadges.forEach((badge) => {
-    badge.addEventListener("click", (e) => {
-      e.preventDefault();
-      const card = badge.closest(".card");
-      const bankName = card.querySelector(".bank-name")?.textContent;
-      console.log("Navigation vers:", bankName);
-      // TODO: Ouvrir l'itinéraire vers la banque
-    });
-  });
-
-  // Animation d'apparition des cartes au scroll
-  const observerOptions = {
-    threshold: 0.1,
-    rootMargin: "0px 0px -50px 0px",
-  };
-
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.style.opacity = "1";
-        entry.target.style.transform = "translateY(0)";
-      }
-    });
-  }, observerOptions);
-
-  document.querySelectorAll(".card").forEach((card) => {
-    card.style.opacity = "0";
-    card.style.transform = "translateY(20px)";
-    card.style.transition = "opacity 0.3s ease, transform 0.3s ease";
-    observer.observe(card);
-  });
 };
