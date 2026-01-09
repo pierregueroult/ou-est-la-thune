@@ -2,9 +2,9 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 
 async function transformInputToSource(
-  inputFileName,
-  outputFileName,
-  transformFunction,
+  inputFileName, // nom de l'entrée
+  outputFileName, // nom de la sortie
+  transformFunction, // fonction de traitement
 ) {
   const inputPath = path.join(__dirname, "sources", inputFileName);
   const outputPath = path.join(__dirname, "results", outputFileName);

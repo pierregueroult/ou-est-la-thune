@@ -58,8 +58,7 @@ async function getLocationFromNavigator() {
       navigator.geolocation.getCurrentPosition(resolve, reject);
     });
 
-    const [lat, lng] = [position.coords.latitude, position.coords.longitude];
-    return [lat, lng];
+    return [position.coords.latitude, position.coords.longitude];
   } catch (error) {
     console.error("Error getting location from navigator:", error);
     return null;

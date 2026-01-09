@@ -4,6 +4,3 @@ scripts/results/*
 
 .DS_Store
 TODO.md
-
-web/data/*
-!web/data/.gitkeep

@@ -6,11 +6,11 @@ function ipFranceTransformer(content) {
   const locationMap = new Map();
 
   for (const line of lines) {
-    const matches = line.match(/"([^"]*)"/g);
+    const matches = line.match(/"([^"]*)"/g); // TODO: trouver un moyen plus simple ou trouver un exemple
     if (!matches || matches.length < 8) continue;
 
     const [ipStart, ipEnd, countryCode, country, region, city, lat, lon] =
-      matches.map((m) => m.slice(1, -1));
+      matches.map((m) => m.slice(1, -1)); // TODO: revoir le slice
 
     const locationKey = `${lat},${lon}`;
 

@@ -33,13 +33,7 @@ window.onload = async () => {
   let response = await fetch("../data/osm-france-bank.geojson");
   let data = await response.json();
 
-  let userPosition;
-  try {
-    userPosition = await getLocation();
-  } catch (error) {
-    console.error("All geolocation methods failed:", error);
-    userPosition = [48.85, 2.35]; // Coord of Paris if all methods fail
-  }
+  let userPosition = await getLocation();
 
   let geoLayer = L.geoJSON(data, {
     filter: (feature) => {
