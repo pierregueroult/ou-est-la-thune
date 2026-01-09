@@ -1,0 +1,9 @@
+scripts/results/*
+
+!scripts/results/.gitkeep
+
+.DS_Store
+TODO.md
+
+web/data/*
+!web/data/.gitkeep

@@ -7,32 +7,6 @@ function removeColumnsFromGeoJSON(geojson, columnsToRemove) {
   return geojson;
 }
 
-/**
- * Get user location with IP fallback
- * First tries browser geolocation, falls back to IP-based location if denied
- */
-function getLocation() {
-  return new Promise(async (resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        console.log("Using browser geolocation");
-        resolve([pos.coords.latitude, pos.coords.longitude]);
-      },
-      async (error) => {
-        console.warn("Browser geolocation failed:", error.message);
-        console.log("Falling back to IP-based geolocation...");
-        try {
-          const ipLocation = await getLocationFromIP();
-          resolve(ipLocation);
-        } catch (ipError) {
-          reject(ipError);
-        }
-      },
-      { enableHighAccuracy: true },
-    );
-  });
-}
-
 const RADIUS_METERS = 2000;
 
 /* Define the distance between 2 coords (crow fly)
