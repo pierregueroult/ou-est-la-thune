@@ -49,12 +49,27 @@ window.onload = async () => {
     fillOpacity: 0.1,
   });
 
+  // Création de l'icône rouge pour le marker
+  const greenIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+  // Création du marker utilisateur avec l'icône rouge
+  let user_marker = L.marker(userPosition, {
+    icon: greenIcon,
+  });
+
   let map = L.map("map", {
     center: userPosition,
     zoomControl: false,
     zoom: 14,
     attributonControl: false,
-    layers: [layer, geoLayer, circle],
+    layers: [layer, geoLayer, circle, user_marker],
   });
 
   // Sharing the position and website
@@ -95,6 +110,7 @@ window.onload = async () => {
       map.setView(userPosition, 14);
 
       circle.setLatLng(userPosition);
+      user_marker.setLatLng(userPosition);
 
       geoLayer.clearLayers();
       geoLayer.addData(data); // Updating the filter of the geolayer with new radius :)
