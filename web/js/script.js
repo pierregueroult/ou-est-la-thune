@@ -105,7 +105,6 @@ window.onload = async () => {
   const locateButton = document.getElementById("locate");
   locateButton.addEventListener("click", async () => {
     try {
-      locateButton.classList.add("loading");
       userPosition = await getLocation();
       map.setView(userPosition, 14);
 
@@ -121,7 +120,6 @@ window.onload = async () => {
         "Impossible de récupérer votre nouvelle position. Veuillez autoriser la géolocalisation.",
       );
     }
-    locateButton.classList.remove("loading");
   });
 
   document.getElementById("zoom-in").addEventListener("click", () => {
