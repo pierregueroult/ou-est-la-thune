@@ -1,5 +1,3 @@
-const RADIUS_METERS = 2000;
-
 /* Define the distance between 2 coords (crow fly)
     HAVERSINE FORMULA */
 function distanceMeters([lat1, lng1], [lat2, lng2]) {
@@ -30,6 +28,8 @@ window.onload = async () => {
     },
   );
 
+  let radiusMeters = document.getElementById("selected_radius").value;
+
   let response = await fetch("../data/osm-france-bank.geojson");
   let data = await response.json();
 
@@ -39,8 +39,29 @@ window.onload = async () => {
     filter: (feature) => {
       const [lng, lat] = feature.geometry.coordinates;
       const distance = distanceMeters(userPosition, [lat, lng]);
-      return distance <= RADIUS_METERS;
+      return distance <= radiusMeters;
     },
+  });
+
+  let circle = L.circle(userPosition, {
+    radius: radiusMeters,
+    color: "blue",
+    fillOpacity: 0.1,
+  });
+
+  // Création de l'icône rouge pour le marker
+  const icon = new L.Icon({
+  iconUrl: '../assets/images/marker-icon-2x-red.png',
+  shadowUrl: '../assets/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+  // Création du marker utilisateur avec l'icône rouge
+  let userMarker = L.marker(userPosition, {
+    icon: icon,
   });
 
   let map = L.map("map", {
@@ -48,17 +69,11 @@ window.onload = async () => {
     zoomControl: false,
     zoom: 14,
     attributonControl: false,
-    layers: [layer, geoLayer],
+    layers: [layer, geoLayer, circle, userMarker],
   });
 
-  L.circle(userPosition, {
-    radius: RADIUS_METERS,
-    color: "blue",
-    fillOpacity: 0.1,
-  }).addTo(map);
-
+  // Sharing the position and website
   const shareButton = document.getElementById("share");
-
   shareButton.addEventListener("click", async () => {
     const center = map.getCenter();
     const zoom = map.getZoom();
@@ -85,48 +100,24 @@ window.onload = async () => {
     }
   });
 
+
+  // Centring the map on user
   const locateButton = document.getElementById("locate");
   locateButton.addEventListener("click", async () => {
     try {
-      locateButton.classList.add("loading");
-      const newPosition = await getLocation();
+      userPosition = await getLocation();
+      map.setView(userPosition, 14);
 
-      map.setView(newPosition, 14);
+      circle.setLatLng(userPosition);
+      userMarker.setLatLng(userPosition);
 
-      map.eachLayer((layer) => {
-        if (layer instanceof L.Circle) {
-          map.removeLayer(layer);
-        }
-      });
-
-      L.circle(newPosition, {
-        radius: RADIUS_METERS,
-        color: "blue",
-        fillOpacity: 0.1,
-      }).addTo(map);
-
-      map.eachLayer((layer) => {
-        if (layer instanceof L.GeoJSON) {
-          map.removeLayer(layer);
-        }
-      });
-
-      const newGeoLayer = L.geoJSON(cleanedData, {
-        filter: (feature) => {
-          const [lng, lat] = feature.geometry.coordinates;
-          const distance = distanceMeters(newPosition, [lat, lng]);
-          return distance <= RADIUS_METERS;
-        },
-      });
-
-      newGeoLayer.addTo(map);
-
-      locateButton.classList.remove("loading");
+      geoLayer.clearLayers();
+      geoLayer.addData(data); // Updating the filter of the geolayer with new position :)
+ 
     } catch (error) {
       console.error("Error getting location:", error);
-      locateButton.classList.remove("loading");
       alert(
-        "Impossible de récupérer votre position. Veuillez autoriser la géolocalisation.",
+        "Impossible de récupérer votre nouvelle position. Veuillez autoriser la géolocalisation.",
       );
     }
   });
@@ -137,6 +128,17 @@ window.onload = async () => {
 
   document.getElementById("zoom-out").addEventListener("click", () => {
     map.zoomOut();
+  });
+
+  // Updating the radius : changing the geolayer and circle
+  const radius = document.getElementById("selected_radius");
+  radius.addEventListener("change", () => {
+
+    radiusMeters = radius.value;
+    // geoLayer
+    geoLayer.clearLayers();
+    geoLayer.addData(data); // Updating the filter of the geolayer with new radius :)
+    circle.setRadius(radiusMeters);
   });
 
   // Gestion des paramètres URL pour le partage
