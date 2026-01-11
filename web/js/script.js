@@ -7,15 +7,15 @@ function distanceMeters([lat1, lng1], [lat2, lng2]) {
   const dLat = toRad(lat2 - lat1);
   const dLng = toRad(lng2 - lng1);
 
-  const distance_Haversine_formula =
+  const distanceHaversineFormula =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
 
   const distance =
     2 *
     Math.atan2(
-      Math.sqrt(distance_Haversine_formula),
-      Math.sqrt(1 - distance_Haversine_formula),
+      Math.sqrt(distanceHaversineFormula),
+      Math.sqrt(1 - distanceHaversineFormula),
     );
   return R * distance;
 }
@@ -28,7 +28,7 @@ window.onload = async () => {
     },
   );
 
-  let RADIUS_METERS = document.getElementById("selected_radius").value;
+  let radiusMeters = document.getElementById("selected_radius").value;
 
   let response = await fetch("../data/osm-france-bank.geojson");
   let data = await response.json();
@@ -39,20 +39,20 @@ window.onload = async () => {
     filter: (feature) => {
       const [lng, lat] = feature.geometry.coordinates;
       const distance = distanceMeters(userPosition, [lat, lng]);
-      return distance <= RADIUS_METERS;
+      return distance <= radiusMeters;
     },
   });
 
   let circle = L.circle(userPosition, {
-    radius: RADIUS_METERS,
+    radius: radiusMeters,
     color: "blue",
     fillOpacity: 0.1,
   });
 
   // Création de l'icône rouge pour le marker
-  const greenIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  const icon = new L.Icon({
+  iconUrl: '../assets/images/marker-icon-2x-red.png',
+  shadowUrl: '../assets/images/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
@@ -60,8 +60,8 @@ window.onload = async () => {
 });
 
   // Création du marker utilisateur avec l'icône rouge
-  let user_marker = L.marker(userPosition, {
-    icon: greenIcon,
+  let userMarker = L.marker(userPosition, {
+    icon: icon,
   });
 
   let map = L.map("map", {
@@ -69,7 +69,7 @@ window.onload = async () => {
     zoomControl: false,
     zoom: 14,
     attributonControl: false,
-    layers: [layer, geoLayer, circle, user_marker],
+    layers: [layer, geoLayer, circle, userMarker],
   });
 
   // Sharing the position and website
@@ -110,10 +110,10 @@ window.onload = async () => {
       map.setView(userPosition, 14);
 
       circle.setLatLng(userPosition);
-      user_marker.setLatLng(userPosition);
+      userMarker.setLatLng(userPosition);
 
       geoLayer.clearLayers();
-      geoLayer.addData(data); // Updating the filter of the geolayer with new radius :)
+      geoLayer.addData(data); // Updating the filter of the geolayer with new position :)
  
     } catch (error) {
       console.error("Error getting location:", error);
@@ -136,11 +136,11 @@ window.onload = async () => {
   const radius = document.getElementById("selected_radius");
   radius.addEventListener("change", () => {
 
-    RADIUS_METERS = radius.value;
+    radiusMeters = radius.value;
     // geoLayer
     geoLayer.clearLayers();
     geoLayer.addData(data); // Updating the filter of the geolayer with new radius :)
-    circle.setRadius(RADIUS_METERS);
+    circle.setRadius(radiusMeters);
   });
 
   // Gestion des paramètres URL pour le partage
