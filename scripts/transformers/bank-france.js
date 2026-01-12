@@ -1,6 +1,7 @@
 // la fonction est utilisé dans le transformer donc prend une string en paramètre et doit retourner une string
-function bankFranceTransformer(content) {
-  const geojson = JSON.parse(content);
+function bankFranceTransformer(file1, file2) {
+  const geojson = JSON.parse(file1);
+  const data = JSON.parse(file2);
 
   const propertiesToRemove = [
     "bank_id_code",
@@ -15,15 +16,20 @@ function bankFranceTransformer(content) {
     "meta_versions_number",
   ];
 
-  if (geojson.features && Array.isArray(geojson.features)) {
-    geojson.features.forEach((feature) => {
-      if (feature.properties) {
-        propertiesToRemove.forEach((prop) => {
-          delete feature.properties[prop];
-        });
+  geojson.features.forEach((feature) => {
+    if (feature.properties) {
+      const node = feature.properties.meta_osm_id;
+
+      const enrichedData = data.find((item) => item.id === node);
+      if (enrichedData && "panoramax_image" in enrichedData) {
+        feature.properties.image = enrichedData.panoramax_image;
       }
-    });
-  }
+
+      propertiesToRemove.forEach((prop) => {
+        delete feature.properties[prop];
+      });
+    }
+  });
 
   return JSON.stringify(geojson);
 }

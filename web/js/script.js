@@ -21,33 +21,62 @@ function distanceMeters([lat1, lng1], [lat2, lng2]) {
 }
 
 function addEventOnPoint(feature, layer) {
-  layer.on("click", () => {
-    const p = feature.properties;
-    if (p.name != null) console.log("Distributeur " + p.name);
-    if (p.brand != null) console.log("Banque " + p.brand);
-    if (p.type != null) console.log("Type " + p.type);
-    if (p.operator != null) console.log("Opérateur : " + p.operator);
-    if (p.wheelchair != null)
-      console.log(
-        "Accessible aux personnes à mobilité réduite : " + p.wheelchair,
-      );
-    if (p.opening_hours != null) console.log("Ouverte de " + p.opening_hours);
-    if (
-      p.meta_name_com != null &&
-      p.meta_name_dep != null &&
-      p.meta_name_reg != null
-    )
-      console.log(
-        "Située " +
-          p.meta_name_com +
-          " / " +
-          p.meta_name_dep +
-          " / " +
-          p.meta_name_reg,
-      );
-    if (p.meta_osm_url != null)
-      console.log("Lien OpenStreetMap : " + p.meta_osm_url);
-  });
+  const p = feature.properties;
+  const container = document.createElement("div");
+  container.className = "bank-popup";
+
+  if (p.image) {
+    const img = document.createElement("img");
+    img.src = p.image;
+    img.alt = p.brand || p.name || "Image de la banque";
+    img.className = "bank-popup-image";
+    container.appendChild(img);
+  }
+
+  if (p.brand || p.name) {
+    const title = document.createElement("h3");
+    title.textContent = p.brand || p.name;
+    container.appendChild(title);
+  }
+
+  const list = document.createElement("ul");
+  list.className = "bank-details";
+
+  const addListItem = (label, value) => {
+    if (!value) return;
+    const li = document.createElement("li");
+    const strong = document.createElement("strong");
+    strong.textContent = `${label}: `;
+    li.appendChild(strong);
+    li.appendChild(document.createTextNode(value));
+    list.appendChild(li);
+  };
+
+  addListItem("Type", p.type);
+  addListItem("Opérateur", p.operator);
+  addListItem("Accessibilité", p.wheelchair);
+  addListItem("Horaires", p.opening_hours);
+
+  // Address/Location
+  const locationParts = [p.meta_name_com, p.meta_name_dep].filter(Boolean);
+  if (locationParts.length > 0) {
+    addListItem("Lieu", locationParts.join(", "));
+  }
+
+  if (p.meta_osm_url) {
+    const li = document.createElement("li");
+    const link = document.createElement("a");
+    link.href = p.meta_osm_url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "Voir sur OpenStreetMap";
+    li.appendChild(link);
+    list.appendChild(li);
+  }
+
+  container.appendChild(list);
+
+  layer.bindPopup(container);
 }
 
 function createTileLayer() {

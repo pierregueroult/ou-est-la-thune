@@ -17,7 +17,7 @@ async function main() {
 
     // Transformation 2: Nettoyage du fichier des banks (on retire ce dont à n'a pas besoin)
     await transformInputToSource(
-      "osm-france-bank.geojson",
+      ["osm-france-bank.geojson", "osm-bank-enriched-data.json"],
       "osm-france-bank.geojson",
       bankFranceTransformer,
     );
