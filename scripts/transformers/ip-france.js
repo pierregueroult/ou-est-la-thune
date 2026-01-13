@@ -1,45 +1,44 @@
 // la fonction est utilisé dans le transformer donc prend une string en paramètre et doit retourner une string
 function ipFranceTransformer(content) {
-  const lines = content.trim().split("\n");
+  // on passe du fichier à une liste de lignes;
+  const lines = content.trim().split("\r\n");
 
-  // Map pour regrouper les plages IP par localisation
-  const locationMap = new Map();
+  const locations = new Map();
 
-  for (const line of lines) {
-    const matches = line.match(/"([^"]*)"/g); // TODO: trouver un moyen plus simple ou trouver un exemple
-    if (!matches || matches.length < 8) continue;
+  lines.forEach((line) => {
+    // on vire les guillemets du csv + on sépare par colonnes
+    const parts = line.replaceAll('"', "").split(",");
 
-    const [ipStart, ipEnd, countryCode, country, region, city, lat, lon] =
-      matches.map((m) => m.slice(1, -1)); // TODO: revoir le slice
+    const lat = parts[6],
+      long = parts[7],
+      rangeStart = parts[0],
+      rangeStop = parts[1];
 
-    const locationKey = `${lat},${lon}`;
+    const key = `${lat},${long}`;
+    let feature = locations.get(key);
 
-    if (!locationMap.has(locationKey)) {
-      locationMap.set(locationKey, {
+    if (!feature) {
+      feature = {
         type: "Feature",
         geometry: {
           type: "Point",
-          coordinates: [parseFloat(lon), parseFloat(lat)],
+          coordinates: [parseFloat(long), parseFloat(lat)],
         },
         properties: {
-          city,
-          region,
+          // On peux ajouter la ville et la région si besoin
           ranges: [],
         },
-      });
+      };
+      locations.set(key, feature);
     }
 
-    locationMap
-      .get(locationKey)
-      .properties.ranges.push([parseInt(ipStart), parseInt(ipEnd)]);
-  }
+    feature.properties.ranges.push([parseInt(rangeStart), parseInt(rangeStop)]);
+  });
 
-  const geojson = {
+  return JSON.stringify({
     type: "FeatureCollection",
-    features: Array.from(locationMap.values()),
-  };
-
-  return JSON.stringify(geojson);
+    features: Array.from(locations.values()),
+  });
 }
 
 module.exports = ipFranceTransformer;
