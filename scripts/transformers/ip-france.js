@@ -1,4 +1,4 @@
-// la fonction est utilisé dans le transformer donc prend une string en paramètre et doit retourner une string
+// la fonction est utilisé dans le transformer donc prend une string en paramètre et doit retourner un objet { filename, content }
 function ipFranceTransformer(content) {
   // on passe du fichier à une liste de lignes;
   const lines = content.trim().split("\r\n");
@@ -35,10 +35,15 @@ function ipFranceTransformer(content) {
     feature.properties.ranges.push([parseInt(rangeStart), parseInt(rangeStop)]);
   });
 
-  return JSON.stringify({
+  const geojson = {
     type: "FeatureCollection",
     features: Array.from(locations.values()),
-  });
+  };
+
+  return {
+    filename: "database-ip-france.geojson",
+    content: JSON.stringify(geojson),
+  };
 }
 
 module.exports = ipFranceTransformer;

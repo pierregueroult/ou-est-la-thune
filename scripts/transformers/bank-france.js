@@ -1,4 +1,4 @@
-// la fonction est utilisé dans le transformer donc prend une string en paramètre et doit retourner une string
+// la fonction est utilisé dans le transformer donc prend une string en paramètre et doit retourner un objet { filename, content }
 function bankFranceTransformer(file1, file2) {
   const geojson = JSON.parse(file1);
   const data = JSON.parse(file2);
@@ -31,7 +31,10 @@ function bankFranceTransformer(file1, file2) {
     }
   });
 
-  return JSON.stringify(geojson);
+  return {
+    filename: "osm-france-bank.geojson",
+    content: JSON.stringify(geojson),
+  };
 }
 
 module.exports = bankFranceTransformer;

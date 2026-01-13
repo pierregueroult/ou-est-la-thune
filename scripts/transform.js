@@ -1,24 +1,31 @@
-const fs = require("node:fs/promises");
-const path = require("node:path");
+const { readSource, writeResult } = require("./file-system");
 
-async function transformInputToSource(
-  inputFileName, // nom de l'entrée (peut être un tableau)
-  outputFileName, // nom de la sortie
-  transformFunction, // fonction de traitement
-) {
-  const inputs = Array.isArray(inputFileName) ? inputFileName : [inputFileName];
+async function transformInputToSource(inputFiles, transformFn) {
+  // 1. Standardize inputs to an array and read them in parallel
+  const fileList = Array.isArray(inputFiles) ? inputFiles : [inputFiles];
+  const contents = await Promise.all(fileList.map(readSource));
 
-  const contents = await Promise.all(
-    inputs.map((file) =>
-      fs.readFile(path.join(__dirname, "sources", file), "utf8"),
-    ),
+  // 2. Execute the transformation
+  const transformationOutput = transformFn(...contents);
+
+  // 3. Normalize the output into an array of { filename, content } objects
+  const outputs = normalizeOutput(transformationOutput);
+
+  // 4. Write all results to the file system
+  await Promise.all(
+    outputs.map(async ({ filename, content }) => {
+      await writeResult(filename, content);
+      console.log(
+        `Success: ${filename} generated from [${fileList.join(", ")}]`,
+      );
+    }),
   );
+}
 
-  const outputPath = path.join(__dirname, "results", outputFileName);
-
-  // On passe le contenu de chaque fichier comme un argument séparé à la fonction de transformation
-  const transformedContent = transformFunction(...contents);
-  await fs.writeFile(outputPath, transformedContent);
+function normalizeOutput(output) {
+  if (Array.isArray(output)) return output;
+  if (output && output.filename && output.content) return [output];
+  return [];
 }
 
 module.exports = { transformInputToSource };
