@@ -1,6 +1,10 @@
 #!/usr/bin/env node
+"use strict";
 
-const { transformInputToSource } = require("./transform.js");
+const {
+  transformInputToSource,
+  transformInputToSourceStream,
+} = require("./transform.js");
 const ipFranceTransformer = require("./transformers/ip-france.js");
 const bankFranceTransformer = require("./transformers/bank-france.js");
 const roadsFranceTransformer = require("./transformers/roads-france.js");
@@ -18,7 +22,11 @@ async function main() {
       bankFranceTransformer,
     );
 
-    console.log("All transformations completed!");
+    // Transformation 3: Extraction des routes de france dans les données de la france entière
+    await transformInputToSourceStream(
+      ["osm-france-roads.geojson", "departements-france.geojson"],
+      roadsFranceTransformer,
+    );
   } catch (error) {
     console.error("Error:", error.message);
     process.exit(1);

@@ -16,6 +16,7 @@ async function writeResultStream(filename) {
   const stream = fs.createWriteStream(filePath, {
     encoding: "utf-8",
     highWaterMark: 64 * 1024, // 64KB writing chunk
+    flags: "w",
   });
   return stream;
 }
