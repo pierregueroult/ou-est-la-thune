@@ -50,13 +50,13 @@ async function initializeWriters(departments) {
   return [streams, filenames];
 }
 
-function writeToStream(streams, departmentCode, lineRaw) {
+function writeToStream(streams, departmentCode, feature) {
   const stream = streams.get(departmentCode);
   if (stream) {
     if (stream.hasWritten) {
       stream.write(",\n");
     }
-    stream.write(lineRaw);
+    stream.write(JSON.stringify(feature));
     stream.hasWritten = true;
   }
 }
@@ -85,7 +85,7 @@ function parseGeoJSONLine(line) {
     ) {
       return null; // on ignore les features mal formées
     }
-    return { feature, rawLine: cleanLine };
+    return feature;
   } catch (error) {
     return null;
   }
@@ -134,14 +134,13 @@ async function roadsFranceTransformer(inputStreamData, inputStreamDepartments) {
   let processedCount = 0;
 
   for await (const line of rlData) {
-    const parsed = parseGeoJSONLine(line);
-    if (!parsed) continue;
+    const feature = parseGeoJSONLine(line);
+    if (!feature) continue;
 
-    const { feature, rawLine } = parsed;
     const matchedDepts = getMatchingDepartments(feature, processedDepartments);
 
     matchedDepts.forEach((code) => {
-      writeToStream(streams, code, rawLine);
+      writeToStream(streams, code, feature);
     });
 
     processedCount++;
