@@ -53,4 +53,17 @@ function isPointInBox(point, bbox) {
   );
 }
 
-module.exports = { isPointInPolygon, getBoundingBox, isPointInBox };
+async function streamToString(stream) {
+  const chunks = [];
+  for await (const chunk of stream) {
+    chunks.push(chunk);
+  }
+  return chunks.join("");
+}
+
+module.exports = {
+  isPointInPolygon,
+  getBoundingBox,
+  isPointInBox,
+  streamToString,
+};

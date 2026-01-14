@@ -1,5 +1,13 @@
-// la fonction est utilisé dans le transformer donc prend une string en paramètre et doit retourner un objet { filename, content }
-function bankFranceTransformer(file1, file2) {
+const { streamToString } = require("../utils.js");
+const { writeResult } = require("../file-system.js");
+
+// la fonction est utilisé comme transformer et prends donc autant de streams en entrée que d'inputfiles
+// on return les noms de fichiers produits pour log après
+async function bankFranceTransformer(stream1, stream2) {
+  // les fichiers sont petits, on peut les lire en entier
+  const file1 = await streamToString(stream1);
+  const file2 = await streamToString(stream2);
+
   const geojson = JSON.parse(file1);
   const data = JSON.parse(file2);
 
@@ -31,10 +39,9 @@ function bankFranceTransformer(file1, file2) {
     }
   });
 
-  return {
-    filename: "osm-france-bank.geojson",
-    content: JSON.stringify(geojson),
-  };
+  await writeResult("osm-france-bank.geojson", JSON.stringify(geojson));
+
+  return ["osm-france-bank.geojson"];
 }
 
 module.exports = bankFranceTransformer;
