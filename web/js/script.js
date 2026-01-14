@@ -76,6 +76,11 @@ function addEventOnPoint(feature, layer) {
 
   container.appendChild(list);
 
+  const itineraryButton = document.createElement("button");
+  itineraryButton.className = "distance-badge";
+  itineraryButton.textContent = "Lancer l'initéraire"
+  container.appendChild(itineraryButton);
+
   layer.bindPopup(container);
 }
 
