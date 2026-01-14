@@ -100,7 +100,10 @@ function createGeoLayer(data, userPosition, radiusMeters) {
       const distance = distanceMeters(userPosition, [lat, lng]);
       return distance <= radiusMeters;
     },
-    onEachFeature: addEventOnPoint,
+    onEachFeature: (feature, layer) => {
+      addEventOnPoint(feature, layer);
+      feature._layer = layer; // For every feature, we associate the according layer (used for closest cashPoints)
+    }
   });
 }
 
@@ -153,9 +156,11 @@ async function updateUserLocation(map, circle, userMarker, data, state) {
     newGeoLayer.addTo(map);
     state.geoLayer = newGeoLayer;
 
+    state.closestCashPoints = defineClosestCashPoints(data, newPosition);
+    printClosestCashPoints(state.closestCashPoints);
+
     return newPosition;
   } catch (error) {
-    console.error("Error getting location:", error);
     alert(
       "Impossible de récupérer votre nouvelle position. Veuillez autoriser la géolocalisation.",
     );
@@ -180,6 +185,23 @@ function setupZoomControls(map) {
   });
 }
 
+function setupClicOnClosestCashPoints(closestCashPoints, map) {
+  const cards = document.getElementsByClassName("card-left");
+
+  for (let i = 0; i < closestCashPoints.length; i++) {
+    const card = cards[i];
+    const cashPoint = closestCashPoints[i];
+    const feature = cashPoint.feature;
+
+    card.addEventListener("click", () => {
+      const [lng, lat] = feature.geometry.coordinates;
+      map.setView([lat, lng], 16);
+      feature._layer.openPopup();
+    });
+  }
+}
+
+
 function updateRadius(map, circle, data, state, newRadiusMeters) {
   state.radiusMeters = newRadiusMeters;
   map.removeLayer(state.geoLayer);
@@ -199,6 +221,47 @@ function setupRadiusControl(map, circle, data, state) {
   });
 }
 
+// Define the 3 closest cash points from user's position
+function defineClosestCashPoints(data, userPosition) {
+
+  const distances = data.features.map((feature) => {
+    const [lng, lat] = feature.geometry.coordinates;
+    const distance = distanceMeters(userPosition, [lat, lng]);
+    return {feature, distance};
+  });
+
+  distances.sort((a, b) => a.distance - b.distance); // Selecting the closest
+  return distances.slice(0, 3);
+}
+
+function roundNumberDecimalPoint(number){
+  return Math.round(number * 100) / 100;
+}
+
+function roundNumber(number){
+  return Math.round(number);
+}
+
+// Printing on the aside menu informations on the closest cash points
+function printClosestCashPoints(closestCashPoints) {
+  const cards = document.getElementsByClassName("card-left");
+
+  for (let i = 0; i < closestCashPoints.length; i++) {
+    const card = cards[i];
+    const cashPoint = closestCashPoints[i];
+
+    card.getElementsByClassName("bank-name")[0].textContent = cashPoint.feature.properties.brand;
+    card.getElementsByClassName("bank-city")[0].textContent = cashPoint.feature.properties.meta_name_com;
+    if(cashPoint.distance >= 1000){
+      card.getElementsByClassName("distance-badge")[0].textContent = roundNumberDecimalPoint(cashPoint.distance / 1000) + "km";
+    }
+    else{
+      card.getElementsByClassName("distance-badge")[0].textContent = roundNumber(cashPoint.distance) + "m";
+    }
+  }
+}
+
+
 window.onload = async () => {
   const radiusMeters = document.getElementById("selected_radius").value;
 
@@ -213,13 +276,18 @@ window.onload = async () => {
 
   const map = createMap(userPosition, layer, geoLayer, circle, userMarker);
 
+  let closestCashPoints = defineClosestCashPoints(data, userPosition);
+  printClosestCashPoints(closestCashPoints);
+
   const state = {
     userPosition: userPosition,
     radiusMeters: radiusMeters,
     geoLayer: geoLayer,
+    closestCashPoints: closestCashPoints
   };
 
   setupLocateButton(map, circle, userMarker, data, state);
   setupZoomControls(map);
   setupRadiusControl(map, circle, data, state);
+  setupClicOnClosestCashPoints(closestCashPoints, map);
 };

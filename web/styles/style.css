@@ -291,22 +291,7 @@ input {
     gap: 0.875rem;
     flex: 1;
     min-width: 0;
-}
-
-.bank-logo {
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 0.375rem;
-    background: linear-gradient(
-        135deg,
-        var(--primary) 0%,
-        var(--primary-hover) 100%
-    );
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    justify-content: space-between;
 }
 
 .bank-info {
