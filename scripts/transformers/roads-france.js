@@ -1,4 +1,6 @@
 const readline = require("readline");
+const fs = require("node:fs");
+const path = require("node:path");
 const { writeResultStream } = require("../file-system.js");
 const {
   getBoundingBox,
@@ -32,12 +34,17 @@ async function initializeWriters(departments) {
   // on créer une map pour stocker les streams qui écrivent les données par département
   const streams = new Map();
   let filenames = [];
+
+  const roadsDirPath = path.join(__dirname, "..", "results", "roads");
+  await fs.promises.mkdir(roadsDirPath, { recursive: true });
+
   for (const dept of departments) {
-    const filename = `roads-france-${dept.code}.geojson`;
+    const filename = `roads/roads-france-${dept.code}.geojson`;
     filenames.push(filename);
     const stream = await writeResultStream(filename);
     // on écrit le header du fichier geojson
     stream.write('{"type":"FeatureCollection","features":[\n');
+    stream.hasWritten = false;
     streams.set(dept.code, stream);
   }
   return [streams, filenames];
@@ -46,14 +53,17 @@ async function initializeWriters(departments) {
 function writeToStream(streams, departmentCode, lineRaw) {
   const stream = streams.get(departmentCode);
   if (stream) {
-    stream.write(lineRaw + ",");
+    if (stream.hasWritten) {
+      stream.write(",\n");
+    }
+    stream.write(lineRaw);
+    stream.hasWritten = true;
   }
 }
 
 function closeWriters(streams) {
   for (const stream of streams.values()) {
-    // on retire le dernier caractère + on ajoute le footer
-    stream.end("null]}");
+    stream.end("\n]}");
   }
 }
 

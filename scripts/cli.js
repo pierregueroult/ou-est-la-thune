@@ -5,6 +5,7 @@ const { transform } = require("./transform.js");
 const ipFranceTransformer = require("./transformers/ip-france.js");
 const bankFranceTransformer = require("./transformers/bank-france.js");
 const roadsFranceTransformer = require("./transformers/roads-france.js");
+const departementsFranceTransformer = require("./transformers/departements-france.js");
 
 async function main() {
   console.log("Starting transformations...");
@@ -19,7 +20,13 @@ async function main() {
       bankFranceTransformer,
     );
 
-    // Transformation 3: Extraction des routes département par département
+    // Transformation 3: Minification du fichier des départements (pour la localisation)
+    await transform(
+      "departements-france.geojson",
+      departementsFranceTransformer,
+    );
+
+    // Transformation 4: Extraction des routes département par département
     await transform(
       ["osm-france-roads.geojson", "departements-france.geojson"],
       roadsFranceTransformer,
