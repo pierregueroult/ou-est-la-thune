@@ -26,7 +26,6 @@ function itineraryCalcul(){
 }
 
 function addEventOnPoint(feature) {
-  console.log(feature);
   const p = feature.properties;
   const container = document.createElement("div");
   container.className = "bank-popup";
