@@ -4,3 +4,5 @@ scripts/results/*
 
 .DS_Store
 TODO.md
+
+/scripts/sources/osm-france-roads.geojson

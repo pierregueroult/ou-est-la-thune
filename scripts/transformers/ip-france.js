@@ -1,45 +1,57 @@
-// la fonction est utilisé dans le transformer donc prend une string en paramètre et doit retourner une string
-function ipFranceTransformer(content) {
-  const lines = content.trim().split("\n");
+const { streamToString } = require("../utils.js");
+const { writeResult } = require("../file-system.js");
 
-  // Map pour regrouper les plages IP par localisation
-  const locationMap = new Map();
+// la fonction est utilisé comme transformer et prends donc autant de streams en entrée que d'inputfiles
+// on return les noms de fichiers produits pour log après
+async function ipFranceTransformer(stream) {
+  // le fichier est petit, on peut le lire en entier
+  const content = await streamToString(stream);
 
-  for (const line of lines) {
-    const matches = line.match(/"([^"]*)"/g); // TODO: trouver un moyen plus simple ou trouver un exemple
-    if (!matches || matches.length < 8) continue;
+  // on passe du fichier à une liste de lignes;
+  const lines = content.trim().split("\r\n");
 
-    const [ipStart, ipEnd, countryCode, country, region, city, lat, lon] =
-      matches.map((m) => m.slice(1, -1)); // TODO: revoir le slice
+  // on stocke les données dans un Map pour être
+  // sur d'avoir une seule feature par coordonnées
+  const locations = new Map();
 
-    const locationKey = `${lat},${lon}`;
+  lines.forEach((line) => {
+    // on vire les guillemets du csv + on sépare par colonnes
+    const parts = line.replaceAll('"', "").split(",");
 
-    if (!locationMap.has(locationKey)) {
-      locationMap.set(locationKey, {
+    const lat = parts[6],
+      long = parts[7],
+      rangeStart = parts[0],
+      rangeStop = parts[1];
+
+    const key = `${lat},${long}`;
+    let feature = locations.get(key);
+
+    if (!feature) {
+      feature = {
         type: "Feature",
         geometry: {
           type: "Point",
-          coordinates: [parseFloat(lon), parseFloat(lat)],
+          coordinates: [parseFloat(long), parseFloat(lat)],
         },
         properties: {
-          city,
-          region,
+          // On peux ajouter la ville et la région si besoin
           ranges: [],
         },
-      });
+      };
+      locations.set(key, feature);
     }
 
-    locationMap
-      .get(locationKey)
-      .properties.ranges.push([parseInt(ipStart), parseInt(ipEnd)]);
-  }
+    feature.properties.ranges.push([parseInt(rangeStart), parseInt(rangeStop)]);
+  });
 
   const geojson = {
     type: "FeatureCollection",
-    features: Array.from(locationMap.values()),
+    features: Array.from(locations.values()),
   };
 
-  return JSON.stringify(geojson);
+  await writeResult("database-ip-france.geojson", JSON.stringify(geojson));
+
+  return ["database-ip-france.geojson"];
 }
 
 module.exports = ipFranceTransformer;
