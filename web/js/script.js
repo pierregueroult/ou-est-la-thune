@@ -20,7 +20,13 @@ function distanceMeters([lat1, lng1], [lat2, lng2]) {
   return R * distance;
 }
 
-function addEventOnPoint(feature, layer) {
+// Itinerary calcul, based on the WA* (weighted A star) algorithm
+function itineraryCalcul(){
+
+}
+
+function addEventOnPoint(feature) {
+  console.log(feature);
   const p = feature.properties;
   const container = document.createElement("div");
   container.className = "bank-popup";
@@ -79,9 +85,12 @@ function addEventOnPoint(feature, layer) {
   const itineraryButton = document.createElement("button");
   itineraryButton.className = "distance-badge";
   itineraryButton.textContent = "Lancer l'initéraire"
+  itineraryButton.addEventListener("click", () => {
+    itineraryCalcul();
+  });
   container.appendChild(itineraryButton);
 
-  layer.bindPopup(container);
+  feature._layer.bindPopup(container);
 }
 
 function createTileLayer() {
@@ -106,8 +115,8 @@ function createGeoLayer(data, userPosition, radiusMeters) {
       return distance <= radiusMeters;
     },
     onEachFeature: (feature, layer) => {
-      addEventOnPoint(feature, layer);
       feature._layer = layer; // For every feature, we associate the according layer (used for closest cashPoints)
+      addEventOnPoint(feature);
     }
   });
 }
