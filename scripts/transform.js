@@ -1,24 +1,23 @@
-const fs = require("node:fs/promises");
-const path = require("node:path");
+const { readSourceStream } = require("./file-system");
 
-async function transformInputToSource(
-  inputFileName, // nom de l'entrée (peut être un tableau)
-  outputFileName, // nom de la sortie
-  transformFunction, // fonction de traitement
-) {
-  const inputs = Array.isArray(inputFileName) ? inputFileName : [inputFileName];
+const ensureArray = (inputs) => (Array.isArray(inputs) ? inputs : [inputs]);
 
-  const contents = await Promise.all(
-    inputs.map((file) =>
-      fs.readFile(path.join(__dirname, "sources", file), "utf8"),
-    ),
-  );
+async function transform(inputFiles, transformFn) {
+  const fileList = ensureArray(inputFiles);
 
-  const outputPath = path.join(__dirname, "results", outputFileName);
+  console.log(`Starting transformation for: [${fileList.join(", ")}]`);
 
-  // On passe le contenu de chaque fichier comme un argument séparé à la fonction de transformation
-  const transformedContent = transformFunction(...contents);
-  await fs.writeFile(outputPath, transformedContent);
+  // 1. Création des streams de réponses pour chaque fichiers d'entrée
+  const inputStreams = await Promise.all(fileList.map(readSourceStream));
+
+  // 2. Execution du transformer avec les streams
+  const generatedFileNames = await transformFn(...inputStreams);
+
+  for (const fileName of generatedFileNames) {
+    if (fileName) {
+      console.log(`Success: ${fileName} generated from ${fileList.join(", ")}`);
+    }
+  }
 }
 
-module.exports = { transformInputToSource };
+module.exports = { transform };

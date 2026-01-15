@@ -1,28 +1,38 @@
 #!/usr/bin/env node
+"use strict";
 
-const { transformInputToSource } = require("./transform.js");
+const { transform } = require("./transform.js");
 const ipFranceTransformer = require("./transformers/ip-france.js");
 const bankFranceTransformer = require("./transformers/bank-france.js");
+const roadsFranceTransformer = require("./transformers/roads-france.js");
+const departementsFranceTransformer = require("./transformers/departements-france.js");
 
 async function main() {
   console.log("Starting transformations...");
 
   try {
     // Transformation 1: Passage de la database des ips de france vers du geojson
-    await transformInputToSource(
-      "database-ip-france.csv",
-      "database-ip-france.geojson",
-      ipFranceTransformer,
-    );
+    await transform("database-ip-france.csv", ipFranceTransformer);
 
     // Transformation 2: Nettoyage du fichier des banks (on retire ce dont à n'a pas besoin)
-    await transformInputToSource(
+    await transform(
       ["osm-france-bank.geojson", "osm-bank-enriched-data.json"],
-      "osm-france-bank.geojson",
       bankFranceTransformer,
     );
 
-    console.log("All transformations completed!");
+    // Transformation 3: Minification du fichier des départements (pour la localisation)
+    await transform(
+      "departements-france.geojson",
+      departementsFranceTransformer,
+    );
+
+    // Transformation 4: Extraction des routes département par département
+    await transform(
+      ["osm-france-roads.geojson", "departements-france.geojson"],
+      roadsFranceTransformer,
+    );
+
+    console.log("Transformations completed successfully.");
   } catch (error) {
     console.error("Error:", error.message);
     process.exit(1);

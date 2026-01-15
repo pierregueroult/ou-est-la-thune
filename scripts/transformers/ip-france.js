@@ -1,8 +1,17 @@
-// la fonction est utilisé dans le transformer donc prend une string en paramètre et doit retourner une string
-function ipFranceTransformer(content) {
+const { streamToString } = require("../utils.js");
+const { writeResult } = require("../file-system.js");
+
+// la fonction est utilisé comme transformer et prends donc autant de streams en entrée que d'inputfiles
+// on return les noms de fichiers produits pour log après
+async function ipFranceTransformer(stream) {
+  // le fichier est petit, on peut le lire en entier
+  const content = await streamToString(stream);
+
   // on passe du fichier à une liste de lignes;
   const lines = content.trim().split("\r\n");
 
+  // on stocke les données dans un Map pour être
+  // sur d'avoir une seule feature par coordonnées
   const locations = new Map();
 
   lines.forEach((line) => {
@@ -35,10 +44,14 @@ function ipFranceTransformer(content) {
     feature.properties.ranges.push([parseInt(rangeStart), parseInt(rangeStop)]);
   });
 
-  return JSON.stringify({
+  const geojson = {
     type: "FeatureCollection",
     features: Array.from(locations.values()),
-  });
+  };
+
+  await writeResult("database-ip-france.geojson", JSON.stringify(geojson));
+
+  return ["database-ip-france.geojson"];
 }
 
 module.exports = ipFranceTransformer;
