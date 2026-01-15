@@ -20,12 +20,7 @@ function distanceMeters([lat1, lng1], [lat2, lng2]) {
   return R * distance;
 }
 
-// Itinerary calcul, based on the WA* (weighted A star) algorithm
-function itineraryCalcul(){
-
-}
-
-function addEventOnPoint(feature) {
+function addEventOnPoint(feature, userPosition) {
   const p = feature.properties;
   const container = document.createElement("div");
   container.className = "bank-popup";
@@ -85,7 +80,7 @@ function addEventOnPoint(feature) {
   itineraryButton.className = "distance-badge";
   itineraryButton.textContent = "Lancer l'initéraire"
   itineraryButton.addEventListener("click", () => {
-    itineraryCalcul();
+    itineraryCalcul(userPosition, feature.geometry.coordinates);
   });
   container.appendChild(itineraryButton);
 
@@ -106,6 +101,16 @@ async function fetchGeoData() {
   return await response.json();
 }
 
+async function fetchOutlinesDepartmentsData() {
+  const response = await fetch("../data/departements-france.geojson");
+  return await response.json();
+}
+
+async function fetchRoadsData(numDep) {
+  const response = await fetch("../data/roads/roads-france-" + numDep + ".geojson");
+  return await response.json();
+}
+
 function createGeoLayer(data, userPosition, radiusMeters) {
   return L.geoJSON(data, {
     filter: (feature) => {
@@ -115,7 +120,7 @@ function createGeoLayer(data, userPosition, radiusMeters) {
     },
     onEachFeature: (feature, layer) => {
       feature._layer = layer; // For every feature, we associate the according layer (used for closest cashPoints)
-      addEventOnPoint(feature);
+      addEventOnPoint(feature, userPosition);
     }
   });
 }
