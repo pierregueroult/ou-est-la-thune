@@ -604,9 +604,8 @@ button.loading::after {
 	background-color: var(--primary);
 }
 
-/* Cluster Marker Styles */
 .cluster-marker {
-	background-color: #3388ff;
+	background-color: var(--primary);
 	color: white;
 	border-radius: 50%;
 	border: 2px solid white;

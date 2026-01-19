@@ -22,7 +22,8 @@ const CONSTANTS = {
 const URLS = {
 	GEOJSON: "../data/osm-france-bank.geojson",
 	TILE_LAYER: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-	MARKER_ICON: "../assets/images/marker-icon-2x-red.png",
+	MARKER_BANK: "../assets/images/marker-bank.png",
+	MARKER_ATM: "../assets/images/marker-atm.png",
 	MARKER_SHADOW: "../assets/images/marker-shadow.png",
 };
 
@@ -193,12 +194,12 @@ function createMap(userPosition) {
 	});
 }
 
-/**
- * Creates a red marker icon
- */
-function createRedIcon() {
+function createIcon(feature) {
+	const iconUrl =
+		feature.properties.type === "atm" ? URLS.MARKER_ATM : URLS.MARKER_BANK;
+
 	return new L.Icon({
-		iconUrl: URLS.MARKER_ICON,
+		iconUrl: iconUrl,
 		shadowUrl: URLS.MARKER_SHADOW,
 		iconSize: [25, 41],
 		iconAnchor: [12, 41],
@@ -210,8 +211,8 @@ function createRedIcon() {
 /**
  * Creates a marker for the user's position
  */
-function createUserMarker(userPosition, icon) {
-	return L.marker(userPosition, { icon });
+function createUserMarker(userPosition) {
+	return L.marker(userPosition);
 }
 
 /**
@@ -220,7 +221,7 @@ function createUserMarker(userPosition, icon) {
 function createCircle(userPosition, radiusMeters) {
 	return L.circle(userPosition, {
 		radius: radiusMeters,
-		color: "blue",
+		color: "#1b615a",
 		fillOpacity: 0.1,
 	});
 }
@@ -316,13 +317,12 @@ function generateClusterLayers(map, data) {
 		cluster.features.push(feature);
 	}
 
-	// Generate layers
 	const layers = [];
 
 	if (zoom >= CONSTANTS.CLUSTER_THRESHOLD_ZOOM) {
 		visibleFeatures.forEach((item) => {
 			const marker = L.marker([item.lat, item.lng], {
-				icon: createRedIcon(),
+				icon: createIcon(item.feature),
 			});
 			addEventOnPoint(item.feature, marker);
 			item.feature._layer = marker;
@@ -382,8 +382,8 @@ function createGeoLayer(data, userPosition, radiusMeters, freeMode = false) {
 			const distance = distanceMeters(userPosition, [lat, lng]);
 			return distance <= radiusMeters;
 		},
-		pointToLayer: (_feature, latlng) => {
-			return L.marker(latlng, { icon: createRedIcon() });
+		pointToLayer: (feature, latlng) => {
+			return L.marker(latlng, { icon: createIcon(feature) });
 		},
 		onEachFeature: (feature, layer) => {
 			addEventOnPoint(feature, layer);
@@ -583,8 +583,7 @@ window.onload = async () => {
 	const circle = createCircle(userPosition, radiusMeters);
 	circle.addTo(map);
 
-	const icon = createRedIcon();
-	const userMarker = createUserMarker(userPosition, icon);
+	const userMarker = createUserMarker(userPosition);
 	userMarker.addTo(map);
 
 	const closestCashPoints = defineClosestCashPoints(data, userPosition);
