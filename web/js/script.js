@@ -20,7 +20,7 @@ function distanceMeters([lat1, lng1], [lat2, lng2]) {
   return R * distance;
 }
 
-function addEventOnPoint(feature, userPosition) {
+function addEventOnPoint(feature, userPosition, map, itineraryLayer) {
   const p = feature.properties;
   const container = document.createElement("div");
   container.className = "bank-popup";
@@ -80,7 +80,7 @@ function addEventOnPoint(feature, userPosition) {
   itineraryButton.className = "distance-badge";
   itineraryButton.textContent = "Lancer l'initéraire"
   itineraryButton.addEventListener("click", () => {
-    itineraryCalcul(userPosition, feature.geometry.coordinates);
+    itineraryCalcul(userPosition, feature.geometry.coordinates, map, itineraryLayer);
   });
   container.appendChild(itineraryButton);
 
@@ -111,7 +111,7 @@ async function fetchRoadsData(numDep) {
   return await response.json();
 }
 
-function createGeoLayer(data, userPosition, radiusMeters) {
+function createGeoLayer(data, userPosition, radiusMeters, map, itineraryLayer) {
   return L.geoJSON(data, {
     filter: (feature) => {
       const [lng, lat] = feature.geometry.coordinates;
@@ -120,7 +120,7 @@ function createGeoLayer(data, userPosition, radiusMeters) {
     },
     onEachFeature: (feature, layer) => {
       feature._layer = layer; // For every feature, we associate the according layer (used for closest cashPoints)
-      addEventOnPoint(feature, userPosition);
+      addEventOnPoint(feature, userPosition, map, itineraryLayer);
     }
   });
 }
@@ -150,13 +150,13 @@ function createUserMarker(userPosition, icon) {
   });
 }
 
-function createMap(userPosition, layer, geoLayer, circle, userMarker) {
+function createMap(userPosition, layer) {
   return L.map("map", {
     center: userPosition,
     zoomControl: false,
     zoom: 14,
     attributonControl: false,
-    layers: [layer, geoLayer, circle, userMarker],
+    layers: [layer],
   });
 }
 
@@ -170,7 +170,7 @@ async function updateUserLocation(map, circle, userMarker, data, state) {
     state.userPosition = newPosition;
     map.removeLayer(state.geoLayer);
 
-    const newGeoLayer = createGeoLayer(data, newPosition, state.radiusMeters);
+    const newGeoLayer = createGeoLayer(data, newPosition, state.radiusMeters, map, itineraryLayer);
     newGeoLayer.addTo(map);
     state.geoLayer = newGeoLayer;
 
@@ -224,7 +224,7 @@ function updateRadius(map, circle, data, state, newRadiusMeters) {
   state.radiusMeters = newRadiusMeters;
   map.removeLayer(state.geoLayer);
 
-  const newGeoLayer = createGeoLayer(data, state.userPosition, newRadiusMeters);
+  const newGeoLayer = createGeoLayer(data, state.userPosition, newRadiusMeters, map, itineraryLayer);
   newGeoLayer.addTo(map);
 
   circle.setRadius(newRadiusMeters);
@@ -287,12 +287,16 @@ window.onload = async () => {
   const data = await fetchGeoData();
   const userPosition = await getLocation();
 
-  const geoLayer = createGeoLayer(data, userPosition, radiusMeters);
+  let map = createMap(userPosition, layer);
+  let itineraryLayer = null;
+  const geoLayer = createGeoLayer(data, userPosition, radiusMeters, map, itineraryLayer);
   const circle = createCircle(userPosition, radiusMeters);
   const icon = createRedIcon();
   const userMarker = createUserMarker(userPosition, icon);
 
-  const map = createMap(userPosition, layer, geoLayer, circle, userMarker);
+  geoLayer.addTo(map);
+  circle.addTo(map);
+  userMarker.addTo(map);
 
   let closestCashPoints = defineClosestCashPoints(data, userPosition);
   printClosestCashPoints(closestCashPoints);
