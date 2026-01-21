@@ -23,6 +23,11 @@ let globalRadiusMeters = 2000;
 let globalGeoLayer = null;
 let globalClosestCashPoints = [];
 let globalFreeMode = false;
+let globalMap = null;
+let globalCircle = null;
+let globalUserMarker = null;
+let globalData = null;
+let itineraryLayer = null;
 
 function distanceMeters([lat1, lng1], [lat2, lng2]) {
 	// calcule de distance entre deux lat,long avec la formule de Haversine formula
@@ -64,8 +69,8 @@ function createPopupListItem(label, value) {
 	return li;
 }
 
-function addEventOnPoint(feature, layer) {
-	// on créer la pop up pour la feature donneés + on la bind au marker
+function addEventOnPoint(feature) {
+	// on créer la pop up pour la feature données + on la bind au marker
 
 	const p = feature.properties;
 	const container = document.createElement("div");
@@ -122,9 +127,16 @@ function addEventOnPoint(feature, layer) {
 	const itineraryButton = document.createElement("button");
 	itineraryButton.className = "distance-badge";
 	itineraryButton.textContent = "Lancer l'itinéraire";
+	itineraryButton.addEventListener("click", async () => {
+		itineraryLayer = await itineraryCalcul(
+			globalUserPosition,
+			feature.geometry.coordinates,
+			globalMap,
+		);
+	});
 	container.appendChild(itineraryButton);
 
-	layer.bindPopup(container);
+	feature._layer.bindPopup(container);
 }
 
 function printClosestCashPoints(closestCashPoints) {
@@ -166,15 +178,6 @@ function createTileLayer() {
 	});
 }
 
-function createMap(userPosition) {
-	return L.map("map", {
-		center: userPosition,
-		zoomControl: false,
-		zoom: CONSTANTS.MAP_DEFAULTS.ZOOM,
-		attributonControl: false,
-	});
-}
-
 function createIcon(feature) {
 	const iconUrl =
 		feature.properties.type === "atm" ? URLS.MARKER_ATM : URLS.MARKER_BANK;
@@ -191,6 +194,18 @@ function createIcon(feature) {
 
 function createUserMarker(userPosition) {
 	return L.marker(userPosition);
+}
+
+async function fetchOutlinesDepartmentsData() {
+	const response = await fetch("../data/departements-france.geojson");
+	return await response.json();
+}
+
+async function fetchRoadsData(numDep) {
+	const response = await fetch(
+		"../data/roads/roads-france-" + numDep + ".geojson",
+	);
+	return await response.json();
 }
 
 function createCircle(userPosition, radiusMeters) {
@@ -212,7 +227,7 @@ function createGeoLayer(data, userPosition, radiusMeters, freeMode = false) {
 
 	return L.geoJSON(data, {
 		filter: (feature) => {
-			// on prend que les features qui sont a proximité
+			// on prend que les features qui sont à proximité
 			const [lng, lat] = feature.geometry.coordinates;
 			const distance = distanceMeters(userPosition, [lat, lng]);
 			return distance <= radiusMeters;
@@ -222,11 +237,10 @@ function createGeoLayer(data, userPosition, radiusMeters, freeMode = false) {
 			return L.marker(latlng, { icon: createIcon(feature) });
 		},
 		onEachFeature: (feature, layer) => {
-			// on ajoute les events sur chaque point pour les modals
-			addEventOnPoint(feature, layer);
 			// on stocke la référence du layer sur la feature pour pouvoir l'utiliser plus tard
-			// TODO: voir si y'a pas mieux à faire pour ça que de stocker dans l'objet de la feature
 			feature._layer = layer;
+			// on ajoute les events sur chaque point pour les modals
+			addEventOnPoint(feature);
 		},
 	});
 }
@@ -239,34 +253,57 @@ function defineClosestCashPoints(data, userPosition) {
 		return { feature, distance };
 	});
 
-	// on les tris + on prend les plus proches
+	// on les trie + on prend les plus proches
 	distances.sort((a, b) => a.distance - b.distance);
 	return distances.slice(0, CONSTANTS.TOP_CLOSEST_POINTS);
 }
 
-async function updateUserLocation(map, circle, userMarker, data) {
+function createMap(userPosition, layer) {
+	return L.map("map", {
+		center: userPosition,
+		zoomControl: false,
+		zoom: CONSTANTS.MAP_DEFAULTS.ZOOM,
+		attributionControl: false,
+		layers: [layer],
+	});
+}
+
+async function updateUserLocation() {
 	try {
 		// on récupère la position et réinitialise le zoom
 		const newPosition = await getLocation();
-		map.setView(newPosition, CONSTANTS.MAP_DEFAULTS.ZOOM);
+		globalMap.setView(newPosition, CONSTANTS.MAP_DEFAULTS.ZOOM);
 
 		// on met à jour la position du marker + dans l'objet
-		userMarker.setLatLng(newPosition);
+		globalUserMarker.setLatLng(newPosition);
 		globalUserPosition = newPosition;
 
 		if (!globalFreeMode) {
-			// si on est dans le mode free on ajoute le
-			circle.setLatLng(newPosition);
-			map.removeLayer(globalGeoLayer);
+			// si on n'est pas en mode free on met à jour le cercle
+			globalCircle.setLatLng(newPosition);
 
-			const newGeoLayer = createGeoLayer(data, newPosition, globalRadiusMeters);
-			newGeoLayer.addTo(map);
+			// on retire l'ancien layer
+			if (globalGeoLayer) {
+				globalMap.removeLayer(globalGeoLayer);
+			}
+
+			// on recrée le geolayer avec la nouvelle position
+			const newGeoLayer = createGeoLayer(
+				globalData,
+				newPosition,
+				globalRadiusMeters,
+				false,
+			);
+			newGeoLayer.addTo(globalMap);
 			globalGeoLayer = newGeoLayer;
-		}
 
-		// la position de l'utilisateur a changé, on recalcule les distributeurs les plus proches
-		globalClosestCashPoints = defineClosestCashPoints(data, newPosition);
-		printClosestCashPoints(globalClosestCashPoints);
+			// la position de l'utilisateur a changé, on recalcule les distributeurs les plus proches
+			globalClosestCashPoints = defineClosestCashPoints(
+				globalData,
+				newPosition,
+			);
+			printClosestCashPoints(globalClosestCashPoints);
+		}
 
 		return newPosition;
 	} catch (error) {
@@ -276,24 +313,24 @@ async function updateUserLocation(map, circle, userMarker, data) {
 	}
 }
 
-function setupLocateButton(map, circle, userMarker, data) {
+function setupLocateButton() {
 	const locateButton = document.getElementById("locate");
 	locateButton.addEventListener("click", async () => {
-		await updateUserLocation(map, circle, userMarker, data);
+		await updateUserLocation();
 	});
 }
 
-function setupZoomControls(map) {
+function setupZoomControls() {
 	document.getElementById("zoom-in").addEventListener("click", () => {
-		map.zoomIn();
+		globalMap.zoomIn();
 	});
 
 	document.getElementById("zoom-out").addEventListener("click", () => {
-		map.zoomOut();
+		globalMap.zoomOut();
 	});
 }
 
-function setupClickOnClosestCashPoints(closestCashPoints, map) {
+function setupClickOnClosestCashPoints(closestCashPoints) {
 	const cards = document.getElementsByClassName("card-left");
 
 	for (let i = 0; i < closestCashPoints.length; i++) {
@@ -301,23 +338,21 @@ function setupClickOnClosestCashPoints(closestCashPoints, map) {
 		const cashPoint = closestCashPoints[i];
 		const { feature } = cashPoint;
 
-		// quand on click sur la card, on reset le zoom + on ouvre la popup
+		// quand on clique sur la card, on reset le zoom + on ouvre la popup
 		card.addEventListener("click", () => {
 			const [lng, lat] = feature.geometry.coordinates;
 
 			// on attend la fin du mouvement pour ouvrir la popup
-			// TODO: fix quand on est en mode libre, comment on monte et descend les features
-			// ça	beug parce que la popup se referme quand ça recharge les features
-			map.once("moveend", () => {
+			globalMap.once("moveend", () => {
 				feature._layer.openPopup();
 			});
 
-			map.setView([lat, lng], 18);
+			globalMap.setView([lat, lng], 18);
 		});
 	}
 }
 
-function setupModeSwitch(map, data, circle) {
+function setupModeSwitch() {
 	const modeSwitch = document.getElementById("mode");
 
 	const toggleMode = () => {
@@ -329,31 +364,31 @@ function setupModeSwitch(map, data, circle) {
 
 		// on retire le layer présent (outdated)
 		if (globalGeoLayer) {
-			map.removeLayer(globalGeoLayer);
+			globalMap.removeLayer(globalGeoLayer);
 			globalGeoLayer = null;
 		}
 
 		if (globalFreeMode) {
-			// si on passe en freemode alors on retire le cercle du mode normale
-			if (circle) map.removeLayer(circle);
+			// si on passe en freemode alors on retire le cercle du mode normal
+			if (globalCircle) globalMap.removeLayer(globalCircle);
 
 			// on crée un layer vide pour le remplir après
-			globalGeoLayer = L.layerGroup().addTo(map);
-			updateClusterLayer(map, data);
+			globalGeoLayer = L.layerGroup().addTo(globalMap);
+			updateClusterLayer(globalMap, globalData);
 		} else {
 			// en mode normal on remet le cercle sur la carte
-			if (circle) circle.addTo(map);
+			if (globalCircle) globalCircle.addTo(globalMap);
 
 			// on recrée le geolayer principal avec seulement les éléments dans le rayon
 			const newGeoLayer = createGeoLayer(
-				data,
+				globalData,
 				globalUserPosition,
 				globalRadiusMeters,
 				false,
 			);
 
 			// on l'ajoute à la carte
-			newGeoLayer.addTo(map);
+			newGeoLayer.addTo(globalMap);
 			globalGeoLayer = newGeoLayer;
 		}
 	};
@@ -361,7 +396,7 @@ function setupModeSwitch(map, data, circle) {
 	modeSwitch.addEventListener("click", toggleMode);
 }
 
-function setupRadiusControl(map, circle, data) {
+function setupRadiusControl() {
 	const radius = document.getElementById("selected_radius");
 
 	radius.addEventListener("change", () => {
@@ -371,32 +406,36 @@ function setupRadiusControl(map, circle, data) {
 
 		// si on est dans le mode normal
 		if (!globalFreeMode) {
-			map.removeLayer(globalGeoLayer);
+			if (globalGeoLayer) {
+				globalMap.removeLayer(globalGeoLayer);
+			}
 
 			// on recrée le geolayer avec le nouveau rayon
 			const newGeoLayer = createGeoLayer(
-				data,
+				globalData,
 				globalUserPosition,
 				newRadiusMeters,
+				false,
 			);
-			newGeoLayer.addTo(map);
+
+			newGeoLayer.addTo(globalMap);
 			globalGeoLayer = newGeoLayer;
-			circle.setRadius(newRadiusMeters);
+			globalCircle.setRadius(newRadiusMeters);
 		}
 	});
 }
 
-function setupMapEvents(map, data) {
+function setupMapEvents() {
 	const onMove = () => {
 		if (globalFreeMode) {
 			// en mode libre on met à jour les clusters à chaque fois
 			// ou alors les markers affichés
-			updateClusterLayer(map, data);
+			updateClusterLayer(globalMap, globalData);
 		}
 	};
 
-	map.on("moveend", onMove);
-	map.on("zoomend", onMove);
+	globalMap.on("moveend", onMove);
+	globalMap.on("zoomend", onMove);
 }
 
 window.onload = async () => {
@@ -406,28 +445,35 @@ window.onload = async () => {
 	);
 
 	const tiles = createTileLayer();
-	const data = await fetchGeoData();
+	globalData = await fetchGeoData();
 	globalUserPosition = await getLocation();
 
-	const map = createMap(globalUserPosition);
-	tiles.addTo(map);
+	globalMap = createMap(globalUserPosition, tiles);
 
-	globalGeoLayer = createGeoLayer(data, globalUserPosition, globalRadiusMeters);
-	globalGeoLayer.addTo(map);
+	globalGeoLayer = createGeoLayer(
+		globalData,
+		globalUserPosition,
+		globalRadiusMeters,
+		false,
+	);
+	globalGeoLayer.addTo(globalMap);
 
-	const circle = createCircle(globalUserPosition, globalRadiusMeters);
-	circle.addTo(map);
+	globalCircle = createCircle(globalUserPosition, globalRadiusMeters);
+	globalCircle.addTo(globalMap);
 
-	const userMarker = createUserMarker(globalUserPosition);
-	userMarker.addTo(map);
+	globalUserMarker = createUserMarker(globalUserPosition);
+	globalUserMarker.addTo(globalMap);
 
-	globalClosestCashPoints = defineClosestCashPoints(data, globalUserPosition);
+	globalClosestCashPoints = defineClosestCashPoints(
+		globalData,
+		globalUserPosition,
+	);
 	printClosestCashPoints(globalClosestCashPoints);
 
-	setupLocateButton(map, circle, userMarker, data);
-	setupZoomControls(map);
-	setupRadiusControl(map, circle, data);
-	setupClickOnClosestCashPoints(globalClosestCashPoints, map);
-	setupModeSwitch(map, data, circle);
-	setupMapEvents(map, data);
+	setupLocateButton();
+	setupZoomControls();
+	setupRadiusControl();
+	setupClickOnClosestCashPoints(globalClosestCashPoints);
+	setupModeSwitch();
+	setupMapEvents();
 };
