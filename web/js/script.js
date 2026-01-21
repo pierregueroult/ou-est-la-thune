@@ -224,6 +224,9 @@ function createGeoLayer(data, userPosition, radiusMeters, freeMode = false) {
 		onEachFeature: (feature, layer) => {
 			// on ajoute les events sur chaque point pour les modals
 			addEventOnPoint(feature, layer);
+			// on stocke la référence du layer sur la feature pour pouvoir l'utiliser plus tard
+			// TODO: voir si y'a pas mieux à faire pour ça que de stocker dans l'objet de la feature
+			feature._layer = layer;
 		},
 	});
 }
@@ -302,13 +305,14 @@ function setupClickOnClosestCashPoints(closestCashPoints, map) {
 		card.addEventListener("click", () => {
 			const [lng, lat] = feature.geometry.coordinates;
 
-			map.setView([lat, lng], 18);
+			// on attend la fin du mouvement pour ouvrir la popup
+			// TODO: fix quand on est en mode libre, comment on monte et descend les features
+			// ça	beug parce que la popup se referme quand ça recharge les features
+			map.once("moveend", () => {
+				feature._layer.openPopup();
+			});
 
-			if (globalFreeMode) {
-				// TODO ouvrir la popup
-			} else if (feature._layer) {
-				// TODO ouvrir la popup
-			}
+			map.setView([lat, lng], 18);
 		});
 	}
 }
