@@ -78,15 +78,15 @@ function buildGraphFromGeoJSON(geojson) {
       const a = getNodeIndex(coords[i]);
       const b = getNodeIndex(coords[i + 1]);
 
-      const cost = distanceMeters(
+      const cost = distanceMeters( // TODO inverser
         [coords[i][1], coords[i][0]],
         [coords[i + 1][1], coords[i + 1][0]]
       );
 
-      graph[a].neighbors.push({ to: b, cost, name: roadName });
+      graph[a].neighbors.push({ toPoint: b, cost, name: roadName });
 
       if (!oneway) {
-        graph[b].neighbors.push({ to: a, cost, name: roadName });
+        graph[b].neighbors.push({ toPoint: a, cost, name: roadName });
       }
     }
   }
@@ -117,59 +117,68 @@ function findClosestNodeIndex(coordLngLat, graph) {
 }
 
 
-
-function heuristic(graph, from, to) {
-  const a = graph[from].coord;
-  const b = graph[to].coord;
-
+// Estimate the resting distance (crow fly with distanceMeters (haversine formula)) 
+function heuristic(graph, point, dest) { // TODO, on inversera lat et long
   return distanceMeters(
-    [a[1], a[0]],
-    [b[1], b[0]]
+    [graph[point].coord[1], graph[point].coord[0]],
+    [graph[dest].coord[1], graph[dest].coord[0]]
   );
 }
 
 //TODO : Verify and clear
+// Evaluating function : f(n) = g(n) + w * h(n)
+// g : node cost
+// w : weight (importance factor given by the WA* algorithm)
+// h : heuristic (evaluating the resting distance to reach the destination)
 function weightedAStar(graph, start, goal, weight) {
-  const openSet = [];
-  const closedSet = new Set();
+  const openSet = []; // Nodes to explores
+  const closedSet = new Set(); // Already explored nodes
 
+  // Obviously we firstly have the start node, the starting point
   openSet.push({
     node: start,
     g: 0,
-    f: weight * heuristic(graph, start, goal),
+    f: 0 + weight * heuristic(graph, start, goal),
     parent: -1
   });
 
+  // While there is still nodes to explore
   while (openSet.length > 0) {
-    openSet.sort((a, b) => a.f - b.f);
-    const current = openSet.shift();
 
-    if (current.node === goal) {
-      return reconstructPath(current);
+    openSet.sort((a, b) => a.f - b.f); // Taking the best node (lowest evaluating function's result) and explore it
+    const currentNode = openSet.shift();
+
+    // If the node is the final destination, return
+    if (currentNode.node === goal) {
+      return reconstructPath(currentNode);
     }
 
-    closedSet.add(current.node);
+    closedSet.add(currentNode.node);
 
-    for (const neighbor of graph[current.node].neighbors) {
-      if (closedSet.has(neighbor.to)) continue;
+    //For all the neighbors of the current node
+    for (const neighbor of graph[currentNode.node].neighbors) {
+      if (closedSet.has(neighbor.toPoint)) continue; // We don't explore neighbor that are already explored
 
-      const g = current.g + neighbor.cost;
-      const h = weight * heuristic(graph, neighbor.to, goal);
-      const f = g + h;
+      // Defining the evaluating function
+      const g = currentNode.g + neighbor.cost;
+      const f = g + weight * heuristic(graph, neighbor.toPoint, goal);
 
-      const existing = openSet.find(n => n.node === neighbor.to);
+      const existing = openSet.find(n => n.node === neighbor.toPoint);
 
       if (!existing || g < existing.g) {
+        // Better way found, actialising the existant path
         if (existing) {
           existing.g = g;
           existing.f = f;
-          existing.parent = current;
-        } else {
+          existing.parent = currentNode;
+        }
+        // Making new node to explore
+        else {
           openSet.push({
-            node: neighbor.to,
+            node: neighbor.toPoint,
             g,
             f,
-            parent: current
+            parent: currentNode
           });
         }
       }
@@ -179,11 +188,12 @@ function weightedAStar(graph, start, goal, weight) {
   return null;
 }
 
+// Explore every parent of a node, until reach the start point (with parent = -1)
 function reconstructPath(node) {
   const path = [];
   let current = node;
 
-  while (current !== -1 && current !== null) {
+  while (current !== -1) {
     path.push(current.node);
     current = current.parent;
   }
@@ -212,9 +222,9 @@ function buildRoadsRecap(pathIndexes, roadsGraph) {
 
   for (let i = 0; i < pathIndexes.length - 1; i++) {
     const from = pathIndexes[i];
-    const to = pathIndexes[i + 1];
+    const toPoint = pathIndexes[i + 1];
 
-    const edge = roadsGraph[from].neighbors.find(n => n.to === to);
+    const edge = roadsGraph[from].neighbors.find(n => n.toPoint === toPoint);
     if (!edge) continue;
 
     if (edge.name !== currentRoad) {
