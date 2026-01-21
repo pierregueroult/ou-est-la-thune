@@ -52,12 +52,13 @@ function getDepartmentFromCoords(position, outlinesDep) {
     return null;
 }
 
+//TODO : Verify and clear
 function buildGraphFromGeoJSON(geojson) {
   const graph = [];
-  const indexByCoord = new Map(); // usage interne uniquement
+  const indexByCoord = new Map();
 
   function getNodeIndex(coord) {
-    const key = coord[0] + "," + coord[1]; // interne, pas exposé
+    const key = coord[0] + "," + coord[1];
     if (!indexByCoord.has(key)) {
       indexByCoord.set(key, graph.length);
       graph.push({
@@ -93,6 +94,7 @@ function buildGraphFromGeoJSON(geojson) {
   return graph;
 }
 
+//TODO : Verify and clear
 function findClosestNodeIndex(coordLngLat, graph) {
   let bestIndex = -1;
   let bestDist = Infinity;
@@ -126,7 +128,8 @@ function heuristic(graph, from, to) {
   );
 }
 
-function weightedAStar(graph, start, goal, weight = 1.4) {
+//TODO : Verify and clear
+function weightedAStar(graph, start, goal, weight) {
   const openSet = [];
   const closedSet = new Set();
 
@@ -200,7 +203,7 @@ function defineTotalDistanceItinerary(roadsItinerary){
   return totalDistance;
 }
 
-
+//TODO : Verify and clear
 function buildRoadsRecap(pathIndexes, roadsGraph) {
   const recap = [];
 
@@ -288,8 +291,8 @@ async function itineraryCalcul(userPosition, positionToReach, map){
   // Conversion Leaflet : [lat, lng] TODO Ca va disparaître normalement
   const roadsItinerary = pathCoordsLngLat.map(([lng, lat]) => [lat, lng]);
 
+  // Adding recap informations
   console.log("Distance totale :", Math.round(defineTotalDistanceItinerary(roadsItinerary)), "m");
-
   const roadsRecap = buildRoadsRecap(pathIndexes, roadsGraph);
   console.log("Récap de l’itinéraire :");
   roadsRecap.forEach(step => {
