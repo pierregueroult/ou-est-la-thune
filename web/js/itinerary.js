@@ -71,6 +71,7 @@ function buildGraphFromGeoJSON(geojson) {
   for (const feature of geojson.features) {
     const coords = feature.geometry.coordinates;
     const oneway = feature.properties.oneway === "yes";
+    const roadName = feature.properties.name || "Route inconnue";
 
     for (let i = 0; i < coords.length - 1; i++) {
       const a = getNodeIndex(coords[i]);
@@ -81,10 +82,10 @@ function buildGraphFromGeoJSON(geojson) {
         [coords[i + 1][1], coords[i + 1][0]]
       );
 
-      graph[a].neighbors.push({ to: b, cost });
+      graph[a].neighbors.push({ to: b, cost, name: roadName });
 
       if (!oneway) {
-        graph[b].neighbors.push({ to: a, cost });
+        graph[b].neighbors.push({ to: a, cost, name: roadName });
       }
     }
   }
@@ -191,6 +192,53 @@ function pathIndexesToCoords(path, graph) {
   return path.map(i => graph[i].coord);
 }
 
+function defineTotalDistanceItinerary(roadsItinerary){
+  let totalDistance = 0;
+  for (let i = 0; i < roadsItinerary.length - 1; i++) {
+    totalDistance += distanceMeters(roadsItinerary[i], roadsItinerary[i + 1]);
+  }
+  return totalDistance;
+}
+
+
+function buildRoadsRecap(pathIndexes, roadsGraph) {
+  const recap = [];
+
+  let currentRoad = null;
+  let currentDistance = 0;
+
+  for (let i = 0; i < pathIndexes.length - 1; i++) {
+    const from = pathIndexes[i];
+    const to = pathIndexes[i + 1];
+
+    const edge = roadsGraph[from].neighbors.find(n => n.to === to);
+    if (!edge) continue;
+
+    if (edge.name !== currentRoad) {
+      if (currentRoad !== null) {
+        recap.push({
+          road: currentRoad,
+          distance: Math.round(currentDistance)
+        });
+      }
+      currentRoad = edge.name;
+      currentDistance = edge.cost;
+    } else {
+      currentDistance += edge.cost;
+    }
+  }
+
+  if (currentRoad !== null) {
+    recap.push({
+      road: currentRoad,
+      distance: Math.round(currentDistance)
+    });
+  }
+
+  return recap;
+}
+
+
 
 
 
@@ -198,46 +246,59 @@ function pathIndexesToCoords(path, graph) {
 async function itineraryCalcul(userPosition, positionToReach, map){
   userPosition = [userPosition[1], userPosition[0]]; // TODO, adaptation à ce qui est bad
 
-  // Getting the graph of roads datas
-
-  // 1. Define which department
-  const outlinesDep = await fetchOutlinesDepartmentsData();
-  const depUser = getDepartmentFromCoords(userPosition, outlinesDep);
-  const depPositionToReach = getDepartmentFromCoords(positionToReach, outlinesDep);
-  let graph = await fetchRoadsData(depUser);
-
-  // When the dep of user != dep of positionToReach, we suppose that the 2 dep are neighbor
-  if(depUser != depPositionToReach){
-      console.log("DEP DIFF");
-      const secondGraph = await fetchRoadsData(depPositionToReach); 
-      const mergedGraph = {
-          type: "FeatureCollection",
-          features: [...graph.features, ...secondGraph.features]
-      }; // Each elements in secondGraph goes in graph
-      graph = mergedGraph;
-  }
-
-  // 2. Algo :))))
-
-  const graphe = buildGraphFromGeoJSON(graph);
-
-  const start = findClosestNodeIndex(userPosition, graphe);
-  const goal = findClosestNodeIndex(positionToReach, graphe);
-
-  const pathIndexes = weightedAStar(graphe, start, goal, 1.4);
-  if (!pathIndexes) return null;
-
-  const pathCoordsLngLat = pathIndexesToCoords(pathIndexes, graphe);
-
-  // Conversion Leaflet : [lat, lng] TODO Ca va disparaître normalement
-  const latLngs = pathCoordsLngLat.map(([lng, lat]) => [lat, lng]);
-
+  // Deleting the previous itinérary
   if (itineraryLayer) {
     map.removeLayer(itineraryLayer);
   }
 
+  // 1. Define which department is necessary
+  const outlinesDep = await fetchOutlinesDepartmentsData();
+  const depUser = getDepartmentFromCoords(userPosition, outlinesDep);
+  const depPositionToReach = getDepartmentFromCoords(positionToReach, outlinesDep);
+  let roadsDep = await fetchRoadsData(depUser);
+
+  // When the dep of userPosition != dep of positionToReach, we suppose that the 2 dep are neighbor (not prefect, simplified solution :( )
+  if(depUser != depPositionToReach){
+      const secondRoadsDep = await fetchRoadsData(depPositionToReach); 
+      const mergedRoadsDep = {
+          type: "FeatureCollection",
+          features: [...roadsDep.features, ...secondRoadsDep.features]
+      }; // Each elements in secondRoadsDep goes in roadsDep
+      roadsDep = mergedRoadsDep;
+  }
+
+  // 2. Building the graph // TODO - ça sera passé en back
+
+  const roadsGraph = buildGraphFromGeoJSON(roadsDep);
+
+  // 3. define a point in graph for the 2 positions
+  const indexGraphStart = findClosestNodeIndex(userPosition, roadsGraph);
+  const indexGraphGoal = findClosestNodeIndex(positionToReach, roadsGraph);
+
+  // 4. Using the WA* algorithm with a weight of 1.5
+
+  const pathIndexes = weightedAStar(roadsGraph, indexGraphStart, indexGraphGoal, 1.5);
+  if (!pathIndexes){
+    alert("Echec du calcul d'itinéraire");
+    return null;
+  }
+
+  const pathCoordsLngLat = pathIndexesToCoords(pathIndexes, roadsGraph);
+
+  // Conversion Leaflet : [lat, lng] TODO Ca va disparaître normalement
+  const roadsItinerary = pathCoordsLngLat.map(([lng, lat]) => [lat, lng]);
+
+  console.log("Distance totale :", Math.round(defineTotalDistanceItinerary(roadsItinerary)), "m");
+
+  const roadsRecap = buildRoadsRecap(pathIndexes, roadsGraph);
+  console.log("Récap de l’itinéraire :");
+  roadsRecap.forEach(step => {
+    console.log(`- ${step.distance} m sur ${step.road}`);
+  });
+
+
   // Display the itinerary
-  itineraryLayer = L.polyline(latLngs, {
+  itineraryLayer = L.polyline(roadsItinerary, {
     color: "#2563eb",
     weight: 5,
     opacity: 0.9
