@@ -195,10 +195,8 @@ function pathIndexesToCoords(path, graph) {
 
 
 // Itinerary calcul, based on the WA* (weighted A star) algorithm
-async function itineraryCalcul(userPosition, positionToReach, map, itineraryLayer){
+async function itineraryCalcul(userPosition, positionToReach, map){
   userPosition = [userPosition[1], userPosition[0]]; // TODO, adaptation à ce qui est bad
-  console.log(userPosition);
-  console.log(positionToReach);
 
   // Getting the graph of roads datas
 
@@ -209,9 +207,9 @@ async function itineraryCalcul(userPosition, positionToReach, map, itineraryLaye
   let graph = await fetchRoadsData(depUser);
 
   // When the dep of user != dep of positionToReach, we suppose that the 2 dep are neighbor
-  // TODO if they are not
   if(depUser != depPositionToReach){
-      const secondGraph = await fetchRoadsData(depUser); 
+      console.log("DEP DIFF");
+      const secondGraph = await fetchRoadsData(depPositionToReach); 
       const mergedGraph = {
           type: "FeatureCollection",
           features: [...graph.features, ...secondGraph.features]
@@ -222,34 +220,31 @@ async function itineraryCalcul(userPosition, positionToReach, map, itineraryLaye
   // 2. Algo :))))
 
   const graphe = buildGraphFromGeoJSON(graph);
-  //console.log(graphe);
+
   const start = findClosestNodeIndex(userPosition, graphe);
   const goal = findClosestNodeIndex(positionToReach, graphe);
-
-  console.log(graphe[start], graphe[goal]);
 
   const pathIndexes = weightedAStar(graphe, start, goal, 1.4);
   if (!pathIndexes) return null;
 
   const pathCoordsLngLat = pathIndexesToCoords(pathIndexes, graphe);
 
-  // Conversion Leaflet : [lat, lng]
+  // Conversion Leaflet : [lat, lng] TODO Ca va disparaître normalement
   const latLngs = pathCoordsLngLat.map(([lng, lat]) => [lat, lng]);
 
-  console.log(itineraryLayer);
-  if (itineraryLayer) { // TODO, passage par ref ?
+  if (itineraryLayer) {
     map.removeLayer(itineraryLayer);
   }
 
-  // Créer la polyline
+  // Display the itinerary
   itineraryLayer = L.polyline(latLngs, {
     color: "#2563eb",
     weight: 5,
     opacity: 0.9
   }).addTo(map);
 
-  // Zoom sur l’itinéraire
-  map.fitBounds(itineraryLayer.getBounds(), {
-    padding: [30, 30]
-  });
+  // Zoom on the itinerary
+  map.fitBounds(itineraryLayer.getBounds());
+
+  return itineraryLayer;
 }
