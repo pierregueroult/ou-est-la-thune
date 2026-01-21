@@ -1,18 +1,8 @@
 const CONSTANTS = {
 	EARTH_RADIUS_METERS: 6371000,
-	CLUSTER_THRESHOLD_ZOOM: 14,
-	CLUSTER_SIZES: {
-		SMALL: 30,
-		MEDIUM: 40,
-		LARGE: 50,
-		XLARGE: 60,
-	},
 	MAP_DEFAULTS: {
 		ZOOM: 14,
-		ZOOM_ON_CLUSTER_CLICK: 2,
-		BOUNDS_PADDING: 0.2,
 	},
-	DEBOUNCE_DELAY_MS: 100,
 	TOP_CLOSEST_POINTS: 3,
 	DISTANCE_THRESHOLDS: {
 		KM_THRESHOLD: 1000,
@@ -27,11 +17,15 @@ const URLS = {
 	MARKER_SHADOW: "../assets/images/marker-shadow.png",
 };
 
-/**
- * Calculates the distance between two geographic coordinates using the Haversine formula
- */
+// Variables globales pour gérer l'état de l'application
+let globalUserPosition = null;
+let globalRadiusMeters = 2000;
+let globalGeoLayer = null;
+let globalClosestCashPoints = [];
+let globalFreeMode = false;
+
 function distanceMeters([lat1, lng1], [lat2, lng2]) {
-	const toRad = (x) => (x * Math.PI) / 180;
+	// calcule de distance entre deux lat,long avec la formule de Haversine formula
 
 	const dLat = toRad(lat2 - lat1);
 	const dLng = toRad(lng2 - lng1);
@@ -45,26 +39,22 @@ function distanceMeters([lat1, lng1], [lat2, lng2]) {
 	return CONSTANTS.EARTH_RADIUS_METERS * c;
 }
 
-/**
- * Rounds a number to 2 decimal places
- */
 function roundToTwoDecimals(number) {
 	return Math.round(number * 100) / 100;
 }
 
-/**
- * Rounds a number to the nearest integer
- */
 function roundToInteger(number) {
 	return Math.round(number);
 }
 
-/**
- * Creates a list item for the popup
- */
+function toRad(x) {
+	return (x * Math.PI) / 180;
+}
+
 function createPopupListItem(label, value) {
 	if (!value) return null;
 
+	// création d'un item pour la popup sur la carte
 	const li = document.createElement("li");
 	const strong = document.createElement("strong");
 	strong.textContent = `${label}: `;
@@ -74,10 +64,9 @@ function createPopupListItem(label, value) {
 	return li;
 }
 
-/**
- * Binds a popup with bank information to a map layer
- */
 function addEventOnPoint(feature, layer) {
+	// on créer la pop up pour la feature donneés + on la bind au marker
+
 	const p = feature.properties;
 	const container = document.createElement("div");
 	container.className = "bank-popup";
@@ -138,12 +127,10 @@ function addEventOnPoint(feature, layer) {
 	layer.bindPopup(container);
 }
 
-/**
- * Prints the closest cash points in the UI cards
- */
 function printClosestCashPoints(closestCashPoints) {
 	const cards = document.getElementsByClassName("card-left");
 
+	// on crée les éléments des trucs à proximité
 	for (let i = 0; i < closestCashPoints.length; i++) {
 		if (!cards[i]) continue;
 
@@ -173,18 +160,12 @@ function printClosestCashPoints(closestCashPoints) {
 	}
 }
 
-/**
- * Creates the tile layer for the map
- */
 function createTileLayer() {
 	return L.tileLayer(URLS.TILE_LAYER, {
 		maxZoom: 20,
 	});
 }
 
-/**
- * Creates a Leaflet map centered on the user position
- */
 function createMap(userPosition) {
 	return L.map("map", {
 		center: userPosition,
@@ -208,16 +189,10 @@ function createIcon(feature) {
 	});
 }
 
-/**
- * Creates a marker for the user's position
- */
 function createUserMarker(userPosition) {
 	return L.marker(userPosition);
 }
 
-/**
- * Creates a circle representing the search radius
- */
 function createCircle(userPosition, radiusMeters) {
 	return L.circle(userPosition, {
 		radius: radiusMeters,
@@ -226,208 +201,69 @@ function createCircle(userPosition, radiusMeters) {
 	});
 }
 
-/**
- * Determines the cluster marker size based on point count
- */
-function getClusterSize(count) {
-	if (count > 1000) return CONSTANTS.CLUSTER_SIZES.XLARGE;
-	if (count > 100) return CONSTANTS.CLUSTER_SIZES.LARGE;
-	if (count > 10) return CONSTANTS.CLUSTER_SIZES.MEDIUM;
-	return CONSTANTS.CLUSTER_SIZES.SMALL;
-}
-
-/**
- * Creates a cluster marker
- */
-function createClusterMarker(lat, lng, count, map) {
-	const size = getClusterSize(count);
-
-	const icon = L.divIcon({
-		html: `<div class="cluster-marker" style="
-			width: ${size}px;
-			height: ${size}px;
-			line-height: ${size}px;
-			margin-top: -${size / 2}px;
-			margin-left: -${size / 2}px;
-		">${count}</div>`,
-		className: "",
-		iconSize: [size, size],
-	});
-
-	const marker = L.marker([lat, lng], { icon });
-
-	marker.on("click", () => {
-		const newZoom =
-			map.getZoom() + CONSTANTS.MAP_DEFAULTS.ZOOM_ON_CLUSTER_CLICK;
-		map.setView([lat, lng], newZoom);
-	});
-
-	return marker;
-}
-
-/**
- * Generates cluster layers based on current map view and zoom level
- */
-function generateClusterLayers(map, data) {
-	if (!map || !data) return [];
-
-	const zoom = map.getZoom();
-	const bounds = map.getBounds();
-	const paddedBounds = bounds.pad(CONSTANTS.MAP_DEFAULTS.BOUNDS_PADDING);
-
-	const gridSize = 30 / Math.pow(2, zoom);
-	const clusters = new Map();
-	const visibleFeatures = [];
-
-	for (const feature of data.features) {
-		const [lng, lat] = feature.geometry.coordinates;
-
-		if (
-			lat < paddedBounds.getSouth() ||
-			lat > paddedBounds.getNorth() ||
-			lng < paddedBounds.getWest() ||
-			lng > paddedBounds.getEast()
-		) {
-			continue;
-		}
-
-		if (zoom >= CONSTANTS.CLUSTER_THRESHOLD_ZOOM) {
-			visibleFeatures.push({ type: "marker", feature, lat, lng });
-			continue;
-		}
-
-		const gridX = Math.floor(lng / gridSize);
-		const gridY = Math.floor(lat / gridSize);
-		const key = `${gridX},${gridY}`;
-
-		if (!clusters.has(key)) {
-			clusters.set(key, {
-				type: "cluster",
-				latSum: 0,
-				lngSum: 0,
-				count: 0,
-				features: [],
-			});
-		}
-
-		const cluster = clusters.get(key);
-		cluster.count++;
-		cluster.latSum += lat;
-		cluster.lngSum += lng;
-		cluster.features.push(feature);
-	}
-
-	const layers = [];
-
-	if (zoom >= CONSTANTS.CLUSTER_THRESHOLD_ZOOM) {
-		visibleFeatures.forEach((item) => {
-			const marker = L.marker([item.lat, item.lng], {
-				icon: createIcon(item.feature),
-			});
-			addEventOnPoint(item.feature, marker);
-			item.feature._layer = marker;
-			layers.push(marker);
-		});
-	} else {
-		clusters.forEach((cluster) => {
-			const lat = cluster.latSum / cluster.count;
-			const lng = cluster.lngSum / cluster.count;
-			const clusterMarker = createClusterMarker(lat, lng, cluster.count, map);
-			layers.push(clusterMarker);
-		});
-	}
-
-	return layers;
-}
-
-/**
- * Updates the cluster layer after a debounce delay
- */
-function updateClusterLayer(map, data, state) {
-	if (state.debounceTimer) {
-		clearTimeout(state.debounceTimer);
-	}
-
-	state.debounceTimer = setTimeout(() => {
-		if (!state.freeMode) return;
-
-		if (!state.geoLayer || !state.geoLayer.clearLayers) {
-			state.geoLayer = L.layerGroup().addTo(map);
-		} else {
-			state.geoLayer.clearLayers();
-		}
-
-		const newLayers = generateClusterLayers(map, data);
-		newLayers.forEach((layer) => layer.addTo(state.geoLayer));
-	}, CONSTANTS.DEBOUNCE_DELAY_MS);
-}
-
-/**
- * Fetches the GeoJSON data from the server
- */
 async function fetchGeoData() {
 	const response = await fetch(URLS.GEOJSON);
 	return await response.json();
 }
 
-/**
- * Creates a GeoJSON layer filtered by radius (normal mode only)
- */
 function createGeoLayer(data, userPosition, radiusMeters, freeMode = false) {
+	// le geolayer qui limite avec la position seulement dans le mode normal
 	if (freeMode) return null;
 
 	return L.geoJSON(data, {
 		filter: (feature) => {
+			// on prend que les features qui sont a proximité
 			const [lng, lat] = feature.geometry.coordinates;
 			const distance = distanceMeters(userPosition, [lat, lng]);
 			return distance <= radiusMeters;
 		},
 		pointToLayer: (feature, latlng) => {
+			// petit icone sympa
 			return L.marker(latlng, { icon: createIcon(feature) });
 		},
 		onEachFeature: (feature, layer) => {
+			// on ajoute les events sur chaque point pour les modals
 			addEventOnPoint(feature, layer);
-			feature._layer = layer;
 		},
 	});
 }
 
-/**
- * Finds the closest cash points to the user
- */
 function defineClosestCashPoints(data, userPosition) {
+	// on calcule les distances pour chaque feature
 	const distances = data.features.map((feature) => {
 		const [lng, lat] = feature.geometry.coordinates;
 		const distance = distanceMeters(userPosition, [lat, lng]);
 		return { feature, distance };
 	});
 
+	// on les tris + on prend les plus proches
 	distances.sort((a, b) => a.distance - b.distance);
 	return distances.slice(0, CONSTANTS.TOP_CLOSEST_POINTS);
 }
 
-/**
- * Updates the user's location and refreshes the map
- */
-async function updateUserLocation(map, circle, userMarker, data, state) {
+async function updateUserLocation(map, circle, userMarker, data) {
 	try {
+		// on récupère la position et réinitialise le zoom
 		const newPosition = await getLocation();
 		map.setView(newPosition, CONSTANTS.MAP_DEFAULTS.ZOOM);
 
+		// on met à jour la position du marker + dans l'objet
 		userMarker.setLatLng(newPosition);
-		state.userPosition = newPosition;
+		globalUserPosition = newPosition;
 
-		if (!state.freeMode) {
+		if (!globalFreeMode) {
+			// si on est dans le mode free on ajoute le
 			circle.setLatLng(newPosition);
-			map.removeLayer(state.geoLayer);
+			map.removeLayer(globalGeoLayer);
 
-			const newGeoLayer = createGeoLayer(data, newPosition, state.radiusMeters);
+			const newGeoLayer = createGeoLayer(data, newPosition, globalRadiusMeters);
 			newGeoLayer.addTo(map);
-			state.geoLayer = newGeoLayer;
-
-			state.closestCashPoints = defineClosestCashPoints(data, newPosition);
-			printClosestCashPoints(state.closestCashPoints);
+			globalGeoLayer = newGeoLayer;
 		}
+
+		// la position de l'utilisateur a changé, on recalcule les distributeurs les plus proches
+		globalClosestCashPoints = defineClosestCashPoints(data, newPosition);
+		printClosestCashPoints(globalClosestCashPoints);
 
 		return newPosition;
 	} catch (error) {
@@ -437,19 +273,13 @@ async function updateUserLocation(map, circle, userMarker, data, state) {
 	}
 }
 
-/**
- * Sets up the locate button event listener
- */
-function setupLocateButton(map, circle, userMarker, data, state) {
+function setupLocateButton(map, circle, userMarker, data) {
 	const locateButton = document.getElementById("locate");
 	locateButton.addEventListener("click", async () => {
-		await updateUserLocation(map, circle, userMarker, data, state);
+		await updateUserLocation(map, circle, userMarker, data);
 	});
 }
 
-/**
- * Sets up zoom control button event listeners
- */
 function setupZoomControls(map) {
 	document.getElementById("zoom-in").addEventListener("click", () => {
 		map.zoomIn();
@@ -460,9 +290,6 @@ function setupZoomControls(map) {
 	});
 }
 
-/**
- * Sets up click events on closest cash point cards
- */
 function setupClickOnClosestCashPoints(closestCashPoints, map) {
 	const cards = document.getElementsByClassName("card-left");
 
@@ -471,21 +298,22 @@ function setupClickOnClosestCashPoints(closestCashPoints, map) {
 		const cashPoint = closestCashPoints[i];
 		const { feature } = cashPoint;
 
+		// quand on click sur la card, on reset le zoom + on ouvre la popup
 		card.addEventListener("click", () => {
 			const [lng, lat] = feature.geometry.coordinates;
-			map.setView([lat, lng], 16);
 
-			if (feature._layer && map.hasLayer(feature._layer)) {
-				feature._layer.openPopup();
+			map.setView([lat, lng], 18);
+
+			if (globalFreeMode) {
+				// TODO ouvrir la popup
+			} else if (feature._layer) {
+				// TODO ouvrir la popup
 			}
 		});
 	}
 }
 
-/**
- * Sets up the mode switch toggle between normal and free mode
- */
-function setupModeSwitch(map, data, state, circle) {
+function setupModeSwitch(map, data, circle) {
 	const modeSwitch = document.getElementById("mode");
 
 	const toggleMode = () => {
@@ -493,67 +321,73 @@ function setupModeSwitch(map, data, state, circle) {
 		const newState = !isChecked;
 
 		modeSwitch.setAttribute("aria-checked", newState);
-		state.freeMode = newState;
+		globalFreeMode = newState;
 
-		if (state.geoLayer) {
-			map.removeLayer(state.geoLayer);
-			state.geoLayer = null;
+		// on retire le layer présent (outdated)
+		if (globalGeoLayer) {
+			map.removeLayer(globalGeoLayer);
+			globalGeoLayer = null;
 		}
 
-		if (state.freeMode) {
+		if (globalFreeMode) {
+			// si on passe en freemode alors on retire le cercle du mode normale
 			if (circle) map.removeLayer(circle);
 
-			state.geoLayer = L.layerGroup().addTo(map);
-			updateClusterLayer(map, data, state);
+			// on crée un layer vide pour le remplir après
+			globalGeoLayer = L.layerGroup().addTo(map);
+			updateClusterLayer(map, data);
 		} else {
+			// en mode normal on remet le cercle sur la carte
 			if (circle) circle.addTo(map);
 
+			// on recrée le geolayer principal avec seulement les éléments dans le rayon
 			const newGeoLayer = createGeoLayer(
 				data,
-				state.userPosition,
-				state.radiusMeters,
+				globalUserPosition,
+				globalRadiusMeters,
 				false,
 			);
+
+			// on l'ajoute à la carte
 			newGeoLayer.addTo(map);
-			state.geoLayer = newGeoLayer;
+			globalGeoLayer = newGeoLayer;
 		}
 	};
 
 	modeSwitch.addEventListener("click", toggleMode);
 }
 
-/**
- * Sets up the radius control event listener
- */
-function setupRadiusControl(map, circle, data, state) {
+function setupRadiusControl(map, circle, data) {
 	const radius = document.getElementById("selected_radius");
 
 	radius.addEventListener("change", () => {
+		// quand on change le radius on change le radius dans la variable globale
 		const newRadiusMeters = parseInt(radius.value, 10);
-		state.radiusMeters = newRadiusMeters;
+		globalRadiusMeters = newRadiusMeters;
 
-		if (!state.freeMode) {
-			map.removeLayer(state.geoLayer);
+		// si on est dans le mode normal
+		if (!globalFreeMode) {
+			map.removeLayer(globalGeoLayer);
 
+			// on recrée le geolayer avec le nouveau rayon
 			const newGeoLayer = createGeoLayer(
 				data,
-				state.userPosition,
+				globalUserPosition,
 				newRadiusMeters,
 			);
 			newGeoLayer.addTo(map);
-			state.geoLayer = newGeoLayer;
+			globalGeoLayer = newGeoLayer;
 			circle.setRadius(newRadiusMeters);
 		}
 	});
 }
 
-/**
- * Sets up map event listeners for move and zoom
- */
-function setupMapEvents(map, data, state) {
+function setupMapEvents(map, data) {
 	const onMove = () => {
-		if (state.freeMode) {
-			updateClusterLayer(map, data, state);
+		if (globalFreeMode) {
+			// en mode libre on met à jour les clusters à chaque fois
+			// ou alors les markers affichés
+			updateClusterLayer(map, data);
 		}
 	};
 
@@ -561,47 +395,35 @@ function setupMapEvents(map, data, state) {
 	map.on("zoomend", onMove);
 }
 
-/**
- * Initializes the application when the page loads
- */
 window.onload = async () => {
-	const radiusMeters = parseInt(
+	globalRadiusMeters = parseInt(
 		document.getElementById("selected_radius").value,
 		10,
 	);
 
 	const tiles = createTileLayer();
 	const data = await fetchGeoData();
-	const userPosition = await getLocation();
+	globalUserPosition = await getLocation();
 
-	const map = createMap(userPosition);
+	const map = createMap(globalUserPosition);
 	tiles.addTo(map);
 
-	const geoLayer = createGeoLayer(data, userPosition, radiusMeters);
-	geoLayer.addTo(map);
+	globalGeoLayer = createGeoLayer(data, globalUserPosition, globalRadiusMeters);
+	globalGeoLayer.addTo(map);
 
-	const circle = createCircle(userPosition, radiusMeters);
+	const circle = createCircle(globalUserPosition, globalRadiusMeters);
 	circle.addTo(map);
 
-	const userMarker = createUserMarker(userPosition);
+	const userMarker = createUserMarker(globalUserPosition);
 	userMarker.addTo(map);
 
-	const closestCashPoints = defineClosestCashPoints(data, userPosition);
-	printClosestCashPoints(closestCashPoints);
+	globalClosestCashPoints = defineClosestCashPoints(data, globalUserPosition);
+	printClosestCashPoints(globalClosestCashPoints);
 
-	const state = {
-		userPosition,
-		radiusMeters,
-		geoLayer,
-		closestCashPoints,
-		freeMode: false,
-		debounceTimer: null,
-	};
-
-	setupLocateButton(map, circle, userMarker, data, state);
+	setupLocateButton(map, circle, userMarker, data);
 	setupZoomControls(map);
-	setupRadiusControl(map, circle, data, state);
-	setupClickOnClosestCashPoints(closestCashPoints, map);
-	setupModeSwitch(map, data, state, circle);
-	setupMapEvents(map, data, state);
+	setupRadiusControl(map, circle, data);
+	setupClickOnClosestCashPoints(globalClosestCashPoints, map);
+	setupModeSwitch(map, data, circle);
+	setupMapEvents(map, data);
 };
