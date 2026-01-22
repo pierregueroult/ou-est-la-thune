@@ -439,10 +439,7 @@ function setupMapEvents() {
 }
 
 window.onload = async () => {
-	globalRadiusMeters = parseInt(
-		document.getElementById("selected_radius").value,
-		10,
-	);
+	globalRadiusMeters = document.getElementById("selected_radius").value;
 
 	const tiles = createTileLayer();
 	globalData = await fetchGeoData();
