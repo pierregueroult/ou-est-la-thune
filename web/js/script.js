@@ -7,6 +7,7 @@ const CONSTANTS = {
 	DISTANCE_THRESHOLDS: {
 		KM_THRESHOLD: 1000,
 	},
+	DEBOUNCE_DELAY_MS: 500,
 };
 
 const URLS = {
@@ -54,6 +55,22 @@ function roundToInteger(number) {
 
 function toRad(x) {
 	return (x * Math.PI) / 180;
+}
+
+function debounce(func, delay) {
+	let timeoutId;
+	return function (...args) {
+		clearTimeout(timeoutId);
+		timeoutId = setTimeout(() => func.apply(this, args), delay);
+	};
+}
+
+function formatRadiusDisplay(meters) {
+	if (meters >= CONSTANTS.DISTANCE_THRESHOLDS.KM_THRESHOLD) {
+		const km = meters / 1000;
+		return km % 1 === 0 ? `${km}km` : `${km.toFixed(1)}km`;
+	}
+	return `${meters}m`;
 }
 
 function createPopupListItem(label, value) {
@@ -349,11 +366,51 @@ function setupClickOnClosestCashPoints(closestCashPoints) {
 
 			globalMap.setView([lat, lng], 18);
 		});
+
+		// Ajouter un bouton pour lancer l'itinéraire
+		const badgeEl = card.getElementsByClassName("distance-badge")[0];
+		if (badgeEl) {
+			badgeEl.style.cursor = "pointer";
+			badgeEl.title = "Cliquer pour lancer l'itinéraire";
+
+			badgeEl.addEventListener("click", async (e) => {
+				e.stopPropagation(); // Empêcher le clic sur la carte
+
+				const targetCoords = feature.geometry.coordinates;
+
+				// Désactiver temporairement le badge
+				const originalText = badgeEl.textContent;
+				badgeEl.textContent = "...";
+				badgeEl.style.pointerEvents = "none";
+
+				try {
+					itineraryLayer = await itineraryCalcul(
+						globalUserPosition,
+						targetCoords,
+						globalMap,
+					);
+
+					// Ouvrir la popup après le calcul
+					setTimeout(() => {
+						if (feature._layer) {
+							feature._layer.openPopup();
+						}
+					}, 600);
+				} catch (error) {
+					console.error("Erreur lors du calcul de l'itinéraire:", error);
+					alert("Impossible de calculer l'itinéraire");
+				} finally {
+					badgeEl.textContent = originalText;
+					badgeEl.style.pointerEvents = "auto";
+				}
+			});
+		}
 	}
 }
 
 function setupModeSwitch() {
 	const modeSwitch = document.getElementById("mode");
+	const radiusControl = document.querySelector(".radius-control");
 
 	const toggleMode = () => {
 		const isChecked = modeSwitch.getAttribute("aria-checked") === "true";
@@ -372,12 +429,18 @@ function setupModeSwitch() {
 			// si on passe en freemode alors on retire le cercle du mode normal
 			if (globalCircle) globalMap.removeLayer(globalCircle);
 
+			// masquer le slider en mode free
+			if (radiusControl) radiusControl.style.display = "none";
+
 			// on crée un layer vide pour le remplir après
 			globalGeoLayer = L.layerGroup().addTo(globalMap);
 			updateClusterLayer(globalMap, globalData);
 		} else {
 			// en mode normal on remet le cercle sur la carte
 			if (globalCircle) globalCircle.addTo(globalMap);
+
+			// afficher le slider en mode normal
+			if (radiusControl) radiusControl.style.display = "";
 
 			// on recrée le geolayer principal avec seulement les éléments dans le rayon
 			const newGeoLayer = createGeoLayer(
@@ -397,18 +460,16 @@ function setupModeSwitch() {
 }
 
 function setupRadiusControl() {
-	const radius = document.getElementById("selected_radius");
+	const radiusSlider = document.getElementById("selected_radius");
+	const radiusValueDisplay = document.getElementById("radius-value");
+	const radiusLoader = document.getElementById("radius-loader");
 
-	radius.addEventListener("change", () => {
-		// quand on change le radius on change le radius dans la variable globale
-		const newRadiusMeters = parseInt(radius.value, 10);
+	const updateRadius = (newRadiusMeters) => {
 		globalRadiusMeters = newRadiusMeters;
 
 		// si on est dans le mode normal
 		if (!globalFreeMode) {
-			if (globalGeoLayer) {
-				globalMap.removeLayer(globalGeoLayer);
-			}
+			if (globalGeoLayer) globalMap.removeLayer(globalGeoLayer);
 
 			// on recrée le geolayer avec le nouveau rayon
 			const newGeoLayer = createGeoLayer(
@@ -422,6 +483,22 @@ function setupRadiusControl() {
 			globalGeoLayer = newGeoLayer;
 			globalCircle.setRadius(newRadiusMeters);
 		}
+
+		radiusLoader.classList.add("hidden");
+	};
+
+	const debouncedUpdate = debounce(updateRadius, CONSTANTS.DEBOUNCE_DELAY_MS);
+
+	radiusSlider.addEventListener("input", (e) => {
+		const newRadiusMeters = parseInt(e.target.value, 10);
+
+		radiusValueDisplay.textContent = formatRadiusDisplay(newRadiusMeters);
+
+		if (!globalFreeMode) {
+			radiusLoader.classList.remove("hidden");
+		}
+
+		debouncedUpdate(newRadiusMeters);
 	});
 }
 
@@ -436,6 +513,8 @@ function setupMapEvents() {
 
 	globalMap.on("moveend", onMove);
 	globalMap.on("zoomend", onMove);
+
+	globalMap.whenReady(setupForm);
 }
 
 window.onload = async () => {
@@ -476,4 +555,28 @@ window.onload = async () => {
 	setupClickOnClosestCashPoints(globalClosestCashPoints);
 	setupModeSwitch();
 	setupMapEvents();
+	setupCreditsModal();
 };
+
+function setupCreditsModal() {
+	const modal = document.getElementById("credits-modal");
+	const openButton = document.getElementById("open-credits");
+	const closeButton = document.getElementById("close-credits");
+
+	// Ouvrir la modal
+	openButton.addEventListener("click", () => {
+		modal.showModal();
+	});
+
+	// Fermer avec le bouton X
+	closeButton.addEventListener("click", () => {
+		modal.close();
+	});
+
+	// Fermer en cliquant sur l'overlay (backdrop)
+	modal.addEventListener("click", (e) => {
+		if (e.target === modal) {
+			modal.close();
+		}
+	});
+}
