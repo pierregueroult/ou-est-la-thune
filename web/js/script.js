@@ -28,7 +28,7 @@ let globalMap = null;
 let globalCircle = null;
 let globalUserMarker = null;
 let globalData = null;
-let itineraryLayer = null;
+let globalItineraryLayer = null;
 
 function distanceMeters([lat1, lng1], [lat2, lng2]) {
 	// calcule de distance entre deux lat,long avec la formule de Haversine formula
@@ -145,10 +145,9 @@ function addEventOnPoint(feature) {
 	itineraryButton.className = "distance-badge";
 	itineraryButton.textContent = "Lancer l'itinéraire";
 	itineraryButton.addEventListener("click", async () => {
-		itineraryLayer = await itineraryCalcul(
+		globalItineraryLayer = await itineraryCalcul(
 			globalUserPosition,
 			feature.geometry.coordinates,
-			globalMap,
 		);
 	});
 	container.appendChild(itineraryButton);
@@ -471,17 +470,22 @@ function setupRadiusControl() {
 		if (!globalFreeMode) {
 			if (globalGeoLayer) globalMap.removeLayer(globalGeoLayer);
 
+			// Deleting the previous itinerary if its out of the new radius 
+			if (globalItineraryLayer) {
+				globalMap.removeLayer(globalItineraryLayer);
+			}
+
 			// on recrée le geolayer avec le nouveau rayon
 			const newGeoLayer = createGeoLayer(
 				globalData,
 				globalUserPosition,
-				newRadiusMeters,
+				globalRadiusMeters,
 				false,
 			);
 
 			newGeoLayer.addTo(globalMap);
 			globalGeoLayer = newGeoLayer;
-			globalCircle.setRadius(newRadiusMeters);
+			globalCircle.setRadius(globalRadiusMeters);
 		}
 
 		radiusLoader.classList.add("hidden");
@@ -518,10 +522,7 @@ function setupMapEvents() {
 }
 
 window.onload = async () => {
-	globalRadiusMeters = parseInt(
-		document.getElementById("selected_radius").value,
-		10,
-	);
+	globalRadiusMeters = document.getElementById("selected_radius").value;
 
 	const tiles = createTileLayer();
 	globalData = await fetchGeoData();
