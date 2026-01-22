@@ -7,6 +7,7 @@ const CONSTANTS = {
 	DISTANCE_THRESHOLDS: {
 		KM_THRESHOLD: 1000,
 	},
+	DEBOUNCE_DELAY_MS: 500,
 };
 
 const URLS = {
@@ -54,6 +55,22 @@ function roundToInteger(number) {
 
 function toRad(x) {
 	return (x * Math.PI) / 180;
+}
+
+function debounce(func, delay) {
+	let timeoutId;
+	return function (...args) {
+		clearTimeout(timeoutId);
+		timeoutId = setTimeout(() => func.apply(this, args), delay);
+	};
+}
+
+function formatRadiusDisplay(meters) {
+	if (meters >= CONSTANTS.DISTANCE_THRESHOLDS.KM_THRESHOLD) {
+		const km = meters / 1000;
+		return km % 1 === 0 ? `${km}km` : `${km.toFixed(1)}km`;
+	}
+	return `${meters}m`;
 }
 
 function createPopupListItem(label, value) {
@@ -397,18 +414,16 @@ function setupModeSwitch() {
 }
 
 function setupRadiusControl() {
-	const radius = document.getElementById("selected_radius");
+	const radiusSlider = document.getElementById("selected_radius");
+	const radiusValueDisplay = document.getElementById("radius-value");
+	const radiusLoader = document.getElementById("radius-loader");
 
-	radius.addEventListener("change", () => {
-		// quand on change le radius on change le radius dans la variable globale
-		const newRadiusMeters = parseInt(radius.value, 10);
+	const updateRadius = (newRadiusMeters) => {
 		globalRadiusMeters = newRadiusMeters;
 
 		// si on est dans le mode normal
 		if (!globalFreeMode) {
-			if (globalGeoLayer) {
-				globalMap.removeLayer(globalGeoLayer);
-			}
+			if (globalGeoLayer) globalMap.removeLayer(globalGeoLayer);
 
 			// on recrée le geolayer avec le nouveau rayon
 			const newGeoLayer = createGeoLayer(
@@ -422,6 +437,22 @@ function setupRadiusControl() {
 			globalGeoLayer = newGeoLayer;
 			globalCircle.setRadius(newRadiusMeters);
 		}
+
+		radiusLoader.classList.add("hidden");
+	};
+
+	const debouncedUpdate = debounce(updateRadius, CONSTANTS.DEBOUNCE_DELAY_MS);
+
+	radiusSlider.addEventListener("input", (e) => {
+		const newRadiusMeters = parseInt(e.target.value, 10);
+
+		radiusValueDisplay.textContent = formatRadiusDisplay(newRadiusMeters);
+
+		if (!globalFreeMode) {
+			radiusLoader.classList.remove("hidden");
+		}
+
+		debouncedUpdate(newRadiusMeters);
 	});
 }
 

@@ -616,3 +616,94 @@ button.loading::after {
 	align-items: center;
 	justify-content: center;
 }
+
+/* Radius Control Styles */
+.radius-control {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	padding: 0.75rem;
+	background-color: var(--card);
+	border-radius: 0.625rem;
+	box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.radius-label-wrapper {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.radius-label-wrapper label {
+	font-size: 0.875rem;
+	font-weight: 500;
+	color: var(--card-foreground);
+}
+
+.radius-value-wrapper {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.radius-value {
+	font-size: 0.875rem;
+	font-weight: 600;
+	color: var(--primary);
+	padding: 0.25rem 0.5rem;
+	background-color: var(--background);
+	border-radius: 0.375rem;
+}
+
+.radius-loader {
+	color: var(--primary);
+	animation: spin 0.8s linear infinite;
+}
+
+.radius-loader.hidden {
+	display: none;
+}
+
+/* Slider base */
+.radius-slider {
+	-webkit-appearance: none;
+	width: 100%;
+	height: 6px;
+	border-radius: 3px;
+	background: var(--border);
+	outline: none;
+}
+
+.radius-slider:hover {
+	background: var(--input-border);
+}
+
+/* Slider thumb (curseur) - Chrome/Safari */
+.radius-slider::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	background: var(--primary);
+	cursor: pointer;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Slider thumb (curseur) - Firefox */
+.radius-slider::-moz-range-thumb {
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	background: var(--primary);
+	cursor: pointer;
+	border: none;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Marqueurs min/max */
+.radius-markers {
+	display: flex;
+	justify-content: space-between;
+	font-size: 0.75rem;
+	color: var(--muted);
+}
