@@ -401,8 +401,7 @@ function setupRadiusControl() {
 
 	radius.addEventListener("change", () => {
 		// quand on change le radius on change le radius dans la variable globale
-		const newRadiusMeters = parseInt(radius.value, 10);
-		globalRadiusMeters = newRadiusMeters;
+		globalRadiusMeters = radius.value;
 
 		// si on est dans le mode normal
 		if (!globalFreeMode) {
@@ -414,13 +413,13 @@ function setupRadiusControl() {
 			const newGeoLayer = createGeoLayer(
 				globalData,
 				globalUserPosition,
-				newRadiusMeters,
+				globalRadiusMeters,
 				false,
 			);
 
 			newGeoLayer.addTo(globalMap);
 			globalGeoLayer = newGeoLayer;
-			globalCircle.setRadius(newRadiusMeters);
+			globalCircle.setRadius(globalRadiusMeters);
 		}
 	});
 }
