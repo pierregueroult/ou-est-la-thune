@@ -102,7 +102,7 @@ function findClosestNodeIndex(coordLngLat, graph) {
   for (let i = 0; i < graph.length; i++) {
     const node = graph[i];
 
-    const d = distanceMeters( // INVERSER TODO
+    const d = distanceMeters(
       [coordLngLat[1], coordLngLat[0]],  // lat, lng
       [node.coord[1], node.coord[0]]     // lat, lng
     );
@@ -125,13 +125,14 @@ function heuristic(graph, point, dest) { // TODO, on inversera lat et long
   );
 }
 
+//TODO : Verify and clear
 // Evaluating function : f(n) = g(n) + w * h(n)
 // g : node cost
 // w : weight (importance factor given by the WA* algorithm)
 // h : heuristic (evaluating the resting distance to reach the destination)
 function weightedAStar(graph, start, goal, weight) {
   const openSet = []; // Nodes to explores
-  const closedSet = new Set(); // Already explored nodes. Set for no doublons
+  const closedSet = new Set(); // Already explored nodes
 
   // Obviously we firstly have the start node, the starting point
   openSet.push({
@@ -255,12 +256,12 @@ function buildRoadsRecap(pathIndexes, roadsGraph) {
 
 
 // Itinerary calcul, based on the WA* (weighted A star) algorithm
-async function itineraryCalcul(userPosition, positionToReach){
+async function itineraryCalcul(userPosition, positionToReach, map){
   userPosition = [userPosition[1], userPosition[0]]; // TODO, adaptation à ce qui est bad
 
   // Deleting the previous itinérary
-  if (globalItineraryLayer) {
-    globalMap.removeLayer(globalItineraryLayer);
+  if (itineraryLayer) {
+    map.removeLayer(itineraryLayer);
   }
 
   // 1. Define which department is necessary
@@ -310,14 +311,14 @@ async function itineraryCalcul(userPosition, positionToReach){
 
 
   // Display the itinerary
-  globalItineraryLayer = L.polyline(roadsItinerary, {
+  itineraryLayer = L.polyline(roadsItinerary, {
     color: "#2563eb",
     weight: 5,
     opacity: 0.9
-  }).addTo(globalMap);
+  }).addTo(map);
 
   // Zoom on the itinerary
-  globalMap.fitBounds(globalItineraryLayer.getBounds());
+  map.fitBounds(itineraryLayer.getBounds());
 
-  return globalItineraryLayer;
+  return itineraryLayer;
 }
