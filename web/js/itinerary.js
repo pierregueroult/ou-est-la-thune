@@ -256,12 +256,12 @@ function buildRoadsRecap(pathIndexes, roadsGraph) {
 
 
 // Itinerary calcul, based on the WA* (weighted A star) algorithm
-async function itineraryCalcul(userPosition, positionToReach, map){
+async function itineraryCalcul(userPosition, positionToReach){
   userPosition = [userPosition[1], userPosition[0]]; // TODO, adaptation à ce qui est bad
 
   // Deleting the previous itinérary
-  if (itineraryLayer) {
-    map.removeLayer(itineraryLayer);
+  if (globalItineraryLayer) {
+    globalMap.removeLayer(globalItineraryLayer);
   }
 
   // 1. Define which department is necessary
@@ -311,14 +311,14 @@ async function itineraryCalcul(userPosition, positionToReach, map){
 
 
   // Display the itinerary
-  itineraryLayer = L.polyline(roadsItinerary, {
+  globalItineraryLayer = L.polyline(roadsItinerary, {
     color: "#2563eb",
     weight: 5,
     opacity: 0.9
-  }).addTo(map);
+  }).addTo(globalMap);
 
   // Zoom on the itinerary
-  map.fitBounds(itineraryLayer.getBounds());
+  globalMap.fitBounds(globalItineraryLayer.getBounds());
 
-  return itineraryLayer;
+  return globalItineraryLayer;
 }
