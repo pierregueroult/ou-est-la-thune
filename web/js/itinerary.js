@@ -52,7 +52,7 @@ function getDepartmentFromCoords(position, outlinesDep) {
     return null;
 }
 
-//TODO : Verify and clear
+//TODO : Verify and clear : IN BACK
 function buildGraphFromGeoJSON(geojson) {
   const graph = [];
   const indexByCoord = new Map();
@@ -102,7 +102,7 @@ function findClosestNodeIndex(coordLngLat, graph) {
   for (let i = 0; i < graph.length; i++) {
     const node = graph[i];
 
-    const d = distanceMeters(
+    const d = distanceMeters( // INVERSER TODO
       [coordLngLat[1], coordLngLat[0]],  // lat, lng
       [node.coord[1], node.coord[0]]     // lat, lng
     );
@@ -125,14 +125,13 @@ function heuristic(graph, point, dest) { // TODO, on inversera lat et long
   );
 }
 
-//TODO : Verify and clear
 // Evaluating function : f(n) = g(n) + w * h(n)
 // g : node cost
 // w : weight (importance factor given by the WA* algorithm)
 // h : heuristic (evaluating the resting distance to reach the destination)
 function weightedAStar(graph, start, goal, weight) {
   const openSet = []; // Nodes to explores
-  const closedSet = new Set(); // Already explored nodes
+  const closedSet = new Set(); // Already explored nodes. Set for no doublons
 
   // Obviously we firstly have the start node, the starting point
   openSet.push({
@@ -256,12 +255,12 @@ function buildRoadsRecap(pathIndexes, roadsGraph) {
 
 
 // Itinerary calcul, based on the WA* (weighted A star) algorithm
-async function itineraryCalcul(userPosition, positionToReach, map){
+async function itineraryCalcul(userPosition, positionToReach){
   userPosition = [userPosition[1], userPosition[0]]; // TODO, adaptation à ce qui est bad
 
   // Deleting the previous itinérary
-  if (itineraryLayer) {
-    map.removeLayer(itineraryLayer);
+  if (globalItineraryLayer) {
+    globalMap.removeLayer(globalItineraryLayer);
   }
 
   // 1. Define which department is necessary
@@ -311,14 +310,14 @@ async function itineraryCalcul(userPosition, positionToReach, map){
 
 
   // Display the itinerary
-  itineraryLayer = L.polyline(roadsItinerary, {
+  globalItineraryLayer = L.polyline(roadsItinerary, {
     color: "#2563eb",
     weight: 5,
     opacity: 0.9
-  }).addTo(map);
+  }).addTo(globalMap);
 
   // Zoom on the itinerary
-  map.fitBounds(itineraryLayer.getBounds());
+  globalMap.fitBounds(globalItineraryLayer.getBounds());
 
-  return itineraryLayer;
+  return globalItineraryLayer;
 }
