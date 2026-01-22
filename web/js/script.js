@@ -555,4 +555,28 @@ window.onload = async () => {
 	setupClickOnClosestCashPoints(globalClosestCashPoints);
 	setupModeSwitch();
 	setupMapEvents();
+	setupCreditsModal();
 };
+
+function setupCreditsModal() {
+	const modal = document.getElementById("credits-modal");
+	const openButton = document.getElementById("open-credits");
+	const closeButton = document.getElementById("close-credits");
+
+	// Ouvrir la modal
+	openButton.addEventListener("click", () => {
+		modal.showModal();
+	});
+
+	// Fermer avec le bouton X
+	closeButton.addEventListener("click", () => {
+		modal.close();
+	});
+
+	// Fermer en cliquant sur l'overlay (backdrop)
+	modal.addEventListener("click", (e) => {
+		if (e.target === modal) {
+			modal.close();
+		}
+	});
+}
