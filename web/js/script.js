@@ -366,11 +366,51 @@ function setupClickOnClosestCashPoints(closestCashPoints) {
 
 			globalMap.setView([lat, lng], 18);
 		});
+
+		// Ajouter un bouton pour lancer l'itinéraire
+		const badgeEl = card.getElementsByClassName("distance-badge")[0];
+		if (badgeEl) {
+			badgeEl.style.cursor = "pointer";
+			badgeEl.title = "Cliquer pour lancer l'itinéraire";
+
+			badgeEl.addEventListener("click", async (e) => {
+				e.stopPropagation(); // Empêcher le clic sur la carte
+
+				const targetCoords = feature.geometry.coordinates;
+
+				// Désactiver temporairement le badge
+				const originalText = badgeEl.textContent;
+				badgeEl.textContent = "...";
+				badgeEl.style.pointerEvents = "none";
+
+				try {
+					itineraryLayer = await itineraryCalcul(
+						globalUserPosition,
+						targetCoords,
+						globalMap,
+					);
+
+					// Ouvrir la popup après le calcul
+					setTimeout(() => {
+						if (feature._layer) {
+							feature._layer.openPopup();
+						}
+					}, 600);
+				} catch (error) {
+					console.error("Erreur lors du calcul de l'itinéraire:", error);
+					alert("Impossible de calculer l'itinéraire");
+				} finally {
+					badgeEl.textContent = originalText;
+					badgeEl.style.pointerEvents = "auto";
+				}
+			});
+		}
 	}
 }
 
 function setupModeSwitch() {
 	const modeSwitch = document.getElementById("mode");
+	const radiusControl = document.querySelector(".radius-control");
 
 	const toggleMode = () => {
 		const isChecked = modeSwitch.getAttribute("aria-checked") === "true";
@@ -389,12 +429,18 @@ function setupModeSwitch() {
 			// si on passe en freemode alors on retire le cercle du mode normal
 			if (globalCircle) globalMap.removeLayer(globalCircle);
 
+			// masquer le slider en mode free
+			if (radiusControl) radiusControl.style.display = "none";
+
 			// on crée un layer vide pour le remplir après
 			globalGeoLayer = L.layerGroup().addTo(globalMap);
 			updateClusterLayer(globalMap, globalData);
 		} else {
 			// en mode normal on remet le cercle sur la carte
 			if (globalCircle) globalCircle.addTo(globalMap);
+
+			// afficher le slider en mode normal
+			if (radiusControl) radiusControl.style.display = "";
 
 			// on recrée le geolayer principal avec seulement les éléments dans le rayon
 			const newGeoLayer = createGeoLayer(
@@ -467,6 +513,8 @@ function setupMapEvents() {
 
 	globalMap.on("moveend", onMove);
 	globalMap.on("zoomend", onMove);
+
+	globalMap.whenReady(setupForm);
 }
 
 window.onload = async () => {

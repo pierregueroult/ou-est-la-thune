@@ -40,73 +40,51 @@
 			</header>
 			<section class="search-section">
 				<form>
-					<div class="input-group-container">
-						<div class="timeline-icons" aria-hidden="true">
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								width="24"
-								height="24"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-							>
-								<line x1="2" x2="5" y1="12" y2="12" />
-								<line x1="19" x2="22" y1="12" y2="12" />
-								<line x1="12" x2="12" y1="2" y2="5" />
-								<line x1="12" x2="12" y1="19" y2="22" />
-								<circle cx="12" cy="12" r="7" />
-							</svg>
-
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								width="24"
-								height="24"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-							>
-								<path
-									d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"
-								/>
-								<circle cx="12" cy="10" r="3" />
-							</svg>
+					<div class="form-group">
+						<label>Point de départ</label>
+						<div id="start-point" class="start-point-display">
+							Ma position actuelle
 						</div>
-
-						<div class="inputs-wrapper">
-							<label for="start-point" class="sr-only">Point de départ</label>
+					</div>
+					<div class="form-group">
+						<label for="destination-search">Choisir une destination</label>
+						<div class="destination-wrapper">
 							<input
 								type="text"
-								id="start-point"
-								name="start"
-								class="input-field"
-								placeholder="Point de départ"
+								id="destination-search"
+								placeholder="Rechercher un distributeur..."
 							/>
-
-							<label for="bank-select" class="sr-only"
-								>Sélectionner une banque</label
+							<button
+								type="submit"
+								class="btn-go"
+								aria-label="Lancer l'itinéraire"
 							>
-							<input
-								type="text"
-								id="bank-select"
-								name="bank"
-								class="input-field"
-								placeholder="Sélectionner une banque"
-							/>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									width="20"
+									height="20"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path d="M5 12h14" />
+									<path d="m12 5 7 7-7 7" />
+								</svg>
+							</button>
 						</div>
+						<select id="destination-select" size="5">
+							<option value="">Aucun résultat</option>
+						</select>
 					</div>
 
 					<div class="divider" role="presentation"></div>
 
-					<button type="submit" class="btn-primary">
+					<button type="button" id="btn-closest" class="btn-primary">
 						Le distributeur le plus proche
 					</button>
-
 					<div class="radius-control">
 						<div class="radius-label-wrapper">
 							<label for="selected_radius">Ajuster le rayon :</label>
@@ -303,6 +281,7 @@
 		<script src="./js/location.js"></script>
 		<script src="./js/cluster.js"></script>
 		<script src="./js/itinerary.js"></script>
+		<script src="./js/form.js"></script>
 		<script src="./js/script.js"></script>
 	</body>
 </html>
