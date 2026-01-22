@@ -52,7 +52,7 @@ function getDepartmentFromCoords(position, outlinesDep) {
     return null;
 }
 
-//TODO : Verify and clear
+//TODO : Verify and clear : IN BACK
 function buildGraphFromGeoJSON(geojson) {
   const graph = [];
   const indexByCoord = new Map();
