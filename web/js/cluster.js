@@ -107,8 +107,8 @@ function generateClusterLayers(map, data) {
 				icon: createIcon(item.feature),
 			});
 			marker.feature = item.feature;
-			addEventOnPoint(item.feature, marker);
 			item.feature._layer = marker;
+			addEventOnPoint(item.feature);
 			layers.push(marker);
 		});
 	} else {
