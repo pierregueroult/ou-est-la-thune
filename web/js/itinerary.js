@@ -39,7 +39,7 @@ function bboxContains(point, bbox) {
 }
 
 function getDepartmentFromCoords(position, outlinesDep) {
-	//position = [position[1], position[0]]; // Reversing lat/long to long/lat / TODO
+	// position is expected in [lat, long] format
 	for (const feature of outlinesDep.features) {
 		if (!bboxContains(position, feature.bbox)) {
 			continue;
@@ -51,16 +51,14 @@ function getDepartmentFromCoords(position, outlinesDep) {
 	return null;
 }
 
-function findClosestNodeIndex(coordLngLat, graph) {
+function findClosestNodeIndex(coordLatLng, graph) {
 	let bestIndex = -1;
 	let bestDist = Infinity;
 
 	for (let i = 0; i < graph.nodes.length; i++) {
 		const [coord] = graph.nodes[i];
-		const distance = distanceMeters(
-			[coordLngLat[1], coordLngLat[0]],
-			[coord[1], coord[0]],
-		);
+		// coord and coordLatLng are both [lat, long]
+		const distance = distanceMeters(coordLatLng, coord);
 
 		if (distance < bestDist) {
 			bestDist = distance;
@@ -75,10 +73,8 @@ function findClosestNodeIndex(coordLngLat, graph) {
 function heuristic(graph, pointIndex, destIndex) {
 	const [pointCoord] = graph.nodes[pointIndex];
 	const [destCoord] = graph.nodes[destIndex];
-	return distanceMeters(
-		[pointCoord[1], pointCoord[0]],
-		[destCoord[1], destCoord[0]],
-	);
+	// pointCoord and destCoord are [lat, long]
+	return distanceMeters(pointCoord, destCoord);
 }
 
 // Weighted A* algorithm: f(n) = g(n) + weight * h(n)
@@ -298,8 +294,9 @@ function mergeGraphs(graph1, graph2) {
 }
 
 async function itineraryCalcul(userPosition, positionToReach) {
-	// TODO: Fix coordinate system consistency
-	userPosition = [userPosition[1], userPosition[0]];
+	// userPosition comes as [lat, long] from Leaflet - already correct format
+	// positionToReach comes as [long, lat] from GeoJSON, convert to [lat, long]
+	positionToReach = [positionToReach[1], positionToReach[0]];
 
 	// Remove previous itinerary
 	if (globalItineraryLayer) {
@@ -324,6 +321,7 @@ async function itineraryCalcul(userPosition, positionToReach) {
 
 	// Calculate path using Weighted A* (weight = 1.5)
 	const pathIndexes = weightedAStar(roadsGraph, startIndex, goalIndex, 1.5);
+
 	if (!pathIndexes) {
 		alert("Echec du calcul d'itinéraire");
 		return null;
@@ -331,8 +329,9 @@ async function itineraryCalcul(userPosition, positionToReach) {
 
 	// Convert path to coordinates
 	const pathCoords = pathIndexesToCoords(pathIndexes, roadsGraph);
-	// TODO: Fix coordinate system - temporary conversion for Leaflet
-	const leafletCoords = pathCoords.map(([lng, lat]) => [lat, lng]);
+
+	// pathCoords are already [lat, long], perfect for Leaflet
+	const leafletCoords = pathCoords;
 
 	// Log itinerary information
 	const totalDistance = defineTotalDistanceItinerary(leafletCoords);

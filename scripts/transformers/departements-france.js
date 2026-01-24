@@ -4,6 +4,21 @@ const { startTransform, endTransform, stepInfo, stat } = require("../log.js");
 
 const TRANSFORMER_NAME = "departements-france";
 
+// Inverse les coordonnées de [long, lat] vers [lat, long]
+function swapCoordinates(coords) {
+	if (typeof coords[0] === "number") {
+		// Point simple: [long, lat] -> [lat, long]
+		return [coords[1], coords[0]];
+	}
+	// Récursif pour les tableaux imbriqués (Polygon, MultiPolygon)
+	return coords.map(swapCoordinates);
+}
+
+// Inverse une bbox de [minLong, minLat, maxLong, maxLat] vers [minLat, minLong, maxLat, maxLong]
+function swapBbox(bbox) {
+	return [bbox[1], bbox[0], bbox[3], bbox[2]];
+}
+
 async function departementsFranceTransformer(stream) {
 	const startTime = Date.now();
 	startTransform(TRANSFORMER_NAME, "departements-france.geojson");
@@ -33,14 +48,19 @@ async function departementsFranceTransformer(stream) {
 			newCoordinates = coordinates;
 		}
 
-		const bbox = getBoundingBox(coordinates);
+		// Calculer bbox avec les coordonnées originales [long, lat]
+		const bboxLongLat = getBoundingBox(coordinates);
+
+		// Inverser les coordonnées de [long, lat] vers [lat, long]
+		const swappedCoordinates = swapCoordinates(newCoordinates);
+		const swappedBbox = swapBbox(bboxLongLat);
 
 		return {
 			type: "Feature",
-			bbox: bbox,
+			bbox: swappedBbox,
 			geometry: {
 				type: type,
-				coordinates: newCoordinates,
+				coordinates: swappedCoordinates,
 			},
 			properties: {
 				code: properties.code,

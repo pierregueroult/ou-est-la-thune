@@ -33,7 +33,7 @@ const WRITE_BUFFER_SIZE = 100; // Nombre de features à mettre en buffer avant �
  *   ],
  *   nodes: [                          // Liste des nœuds du graphe
  *     [
- *       [longitude, latitude],        // Index 0: Coordonnées arrondies à 5 décimales (~1m)
+ *       [latitude, longitude],        // Index 0: Coordonnées arrondies à 5 décimales (~1m)
  *       [                             // Index 1: Liste des neighbors
  *         [toPoint, cost, nameIdx],   // toPoint: index du nœud de destination
  *                                     // cost: distance en mètres (arrondie)
@@ -47,10 +47,11 @@ const WRITE_BUFFER_SIZE = 100; // Nombre de features à mettre en buffer avant �
  */
 
 // Arrondir les coordonnées à 5 décimales (~1m de précision)
+// OSM GeoJSON coords are [long, lat], convert to [lat, long] for graph storage
 function roundCoord(coord) {
 	return [
-		Math.round(coord[0] * 100000) / 100000,
 		Math.round(coord[1] * 100000) / 100000,
+		Math.round(coord[0] * 100000) / 100000,
 	];
 }
 
