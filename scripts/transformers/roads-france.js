@@ -20,10 +20,13 @@ const {
 
 const TRANSFORMER_NAME = "roads-france";
 
+// Configuration
+const WRITE_BUFFER_SIZE = 100; // Nombre de features à mettre en buffer avant écriture
+
 /**
  * Format du graphe généré :
  * {
- *   roadNames: [                      // Dictionnaire des noms de routes (déduplication)
+ *   roadNames: [                      // Dictionnaire des noms de routes
  *     "Rue de la République",
  *     "Avenue des Champs",
  *     ...
@@ -31,7 +34,7 @@ const TRANSFORMER_NAME = "roads-france";
  *   nodes: [                          // Liste des nœuds du graphe
  *     [
  *       [longitude, latitude],        // Index 0: Coordonnées arrondies à 5 décimales (~1m)
- *       [                             // Index 1: Liste des neighbors (connexions)
+ *       [                             // Index 1: Liste des neighbors
  *         [toPoint, cost, nameIdx],   // toPoint: index du nœud de destination
  *                                     // cost: distance en mètres (arrondie)
  *                                     // nameIdx: index dans roadNames
@@ -41,10 +44,6 @@ const TRANSFORMER_NAME = "roads-france";
  *     ...
  *   ]
  * }
- *
- * Note: Format compact sans clés JSON pour réduire la taille.
- * Chaque nœud = [coord, neighbors] au lieu de {coord: ..., neighbors: ...}
- * Les connexions sont bidirectionnelles (A↔B stocké dans les deux sens).
  */
 
 // Arrondir les coordonnées à 5 décimales (~1m de précision)
@@ -65,9 +64,7 @@ function processDepartments(geoJsonString) {
 	const data = JSON.parse(geoJsonString);
 	stat(TRANSFORMER_NAME, "Total departments", data.features.length);
 
-	// pour chaque département
 	return data.features.map(({ properties, geometry }) => {
-		// normalisation des coordonnées vers une array de paire de coordonnées
 		const polygonList =
 			geometry.type === "Polygon"
 				? [geometry.coordinates]
@@ -76,46 +73,66 @@ function processDepartments(geoJsonString) {
 		return {
 			code: properties.code,
 			bbox: getBoundingBox(geometry.coordinates),
-			// la première valeur correspond au contour du département
 			polygons: polygonList.map((poly) => poly[0]),
 		};
 	});
 }
 
 async function initializeWriters(departments) {
-	stepInfo(
-		TRANSFORMER_NAME,
-		2,
-		"Initializing output streams for all departments",
-	);
+	stepInfo(TRANSFORMER_NAME, 2, "Initializing output streams");
 	const streams = new Map();
-	let filenames = [];
+	const buffers = new Map();
 
 	const roadsDirPath = path.join(__dirname, "..", "results", "roads");
 	await fs.promises.mkdir(roadsDirPath, { recursive: true });
 
 	for (const dept of departments) {
 		const filename = `roads/roads-france-${dept.code}.geojson`;
-		filenames.push(filename);
 		const stream = await writeResultStream(filename);
 		stream.write('{"type":"FeatureCollection","features":[\n');
 		stream.hasWritten = false;
 		streams.set(dept.code, stream);
+		buffers.set(dept.code, []);
 	}
+
 	stat(TRANSFORMER_NAME, "Output streams created", streams.size);
-	return [streams, filenames];
+	return { streams, buffers };
 }
 
-function writeToStream(streams, departmentCode, feature) {
+function flushBuffer(streams, buffers, departmentCode) {
+	const buffer = buffers.get(departmentCode);
+	if (!buffer || buffer.length === 0) return;
+
 	const stream = streams.get(departmentCode);
 	if (!stream) return;
 
-	const prefix = stream.hasWritten ? ",\n" : "";
-	stream.write(prefix + JSON.stringify(feature));
-	stream.hasWritten = true;
+	for (const feature of buffer) {
+		const prefix = stream.hasWritten ? ",\n" : "";
+		stream.write(prefix + JSON.stringify(feature));
+		stream.hasWritten = true;
+	}
+
+	buffer.length = 0; // Vider le buffer
 }
 
-function closeWriters(streams) {
+function writeToStream(streams, buffers, departmentCode, feature) {
+	const buffer = buffers.get(departmentCode);
+	if (!buffer) return;
+
+	buffer.push(feature);
+
+	if (buffer.length >= WRITE_BUFFER_SIZE) {
+		flushBuffer(streams, buffers, departmentCode);
+	}
+}
+
+function closeWriters(streams, buffers) {
+	// Flush tous les buffers restants
+	for (const [code, _] of buffers) {
+		flushBuffer(streams, buffers, code);
+	}
+
+	// Fermer tous les streams
 	for (const stream of streams.values()) {
 		stream.end("\n]}");
 	}
@@ -129,7 +146,6 @@ function parseGeoJSONLine(line) {
 	try {
 		const cleanLine = line.endsWith(",") ? line.slice(0, -1) : line;
 		const feature = JSON.parse(cleanLine);
-
 		return feature.geometry?.coordinates?.length > 0 ? feature : null;
 	} catch {
 		return null;
@@ -156,7 +172,18 @@ function getMatchingDepartments(feature, departments) {
 	return matchedDepts;
 }
 
-function buildGraphFromGeoJSON(geojson) {
+async function buildGraphForDepartment(departmentCode) {
+	const geojsonPath = path.join(
+		__dirname,
+		"..",
+		"results",
+		"roads",
+		`roads-france-${departmentCode}.geojson`,
+	);
+
+	info(TRANSFORMER_NAME, `Building graph for department ${departmentCode}`);
+
+	// Streaming JSON parsing pour éviter de charger tout en mémoire
 	const nodes = [];
 	const indexByCoord = new Map();
 	const roadNames = [];
@@ -169,13 +196,11 @@ function buildGraphFromGeoJSON(geojson) {
 		const key = coordKey(roundedCoord);
 		if (!indexByCoord.has(key)) {
 			indexByCoord.set(key, nodes.length);
-			// Format array: [coord, neighbors] au lieu de {coord, neighbors}
 			nodes.push([roundedCoord, []]);
 		}
 		return indexByCoord.get(key);
 	}
 
-	// Obtenir ou créer l'index d'un nom de route
 	function getRoadNameIndex(name) {
 		if (!roadNameToIndex.has(name)) {
 			roadNameToIndex.set(name, roadNames.length);
@@ -184,7 +209,18 @@ function buildGraphFromGeoJSON(geojson) {
 		return roadNameToIndex.get(name);
 	}
 
-	for (const feature of geojson.features) {
+	// Lire le fichier ligne par ligne
+	const fileStream = fs.createReadStream(geojsonPath);
+	const rl = readline.createInterface({
+		input: fileStream,
+		crlfDelay: Infinity,
+	});
+
+	let featureCount = 0;
+	for await (const line of rl) {
+		const feature = parseGeoJSONLine(line);
+		if (!feature) continue;
+
 		const coords = feature.geometry.coordinates;
 		const oneway = feature.properties.oneway === "yes";
 		const roadName = feature.properties.name || "Route inconnue";
@@ -201,53 +237,92 @@ function buildGraphFromGeoJSON(geojson) {
 				),
 			);
 
-			// Format compact : neighbors = array à l'index 1 du nœud
-			// [toPoint, cost, nameIdx]
 			nodes[a][1].push([b, cost, roadNameIdx]);
 
 			if (!oneway) {
 				nodes[b][1].push([a, cost, roadNameIdx]);
 			}
 		}
+
+		featureCount++;
 	}
 
-	return { roadNames, nodes };
-}
+	stat(`${TRANSFORMER_NAME}:${departmentCode}`, "Features", featureCount);
+	stat(`${TRANSFORMER_NAME}:${departmentCode}`, "Graph nodes", nodes.length);
+	stat(`${TRANSFORMER_NAME}:${departmentCode}`, "Road names", roadNames.length);
 
-async function buildGraphForDepartment(departmentCode) {
-	const basePath = path.join(__dirname, "..", "results", "roads");
-	const geojsonPath = path.join(
-		basePath,
-		`roads-france-${departmentCode}.geojson`,
-	);
+	// Écrire le graphe en streaming pour éviter JSON.stringify sur des gros objets
 	const graphPath = path.join(
-		basePath,
+		__dirname,
 		"..",
+		"results",
 		"graphs",
 		`roads-france-${departmentCode}.json`,
 	);
 
-	info(TRANSFORMER_NAME, `Building graph for department ${departmentCode}`);
+	const writeStream = fs.createWriteStream(graphPath);
 
-	const geojsonContent = await fs.promises.readFile(geojsonPath, "utf-8");
-	const geojson = JSON.parse(geojsonContent);
+	// Écrire la structure JSON manuellement en streaming
+	writeStream.write('{"roadNames":');
+	writeStream.write(JSON.stringify(roadNames));
+	writeStream.write(',"nodes":[');
 
-	const graph = buildGraphFromGeoJSON(geojson);
+	// Écrire les nœuds par chunks pour éviter de tout garder en mémoire
+	const CHUNK_SIZE = 1000;
+	for (let i = 0; i < nodes.length; i += CHUNK_SIZE) {
+		const chunk = nodes.slice(i, Math.min(i + CHUNK_SIZE, nodes.length));
+		const chunkJson = chunk.map((node) => JSON.stringify(node)).join(",");
 
-	stat(
-		`${TRANSFORMER_NAME}:${departmentCode}`,
-		"Graph nodes",
-		graph.nodes.length,
-	);
-	stat(
-		`${TRANSFORMER_NAME}:${departmentCode}`,
-		"Unique road names",
-		graph.roadNames.length,
-	);
+		if (i > 0) {
+			writeStream.write(",");
+		}
+		writeStream.write(chunkJson);
 
-	await fs.promises.writeFile(graphPath, JSON.stringify(graph));
+		// Permettre au GC de s'exécuter entre les chunks
+		await new Promise((resolve) => setImmediate(resolve));
+	}
+
+	writeStream.write("]}");
+	writeStream.end();
+
+	// Attendre que le stream soit fermé
+	await new Promise((resolve, reject) => {
+		writeStream.on("finish", resolve);
+		writeStream.on("error", reject);
+	});
+
+	// Libérer la mémoire
+	indexByCoord.clear();
+	roadNameToIndex.clear();
+	nodes.length = 0;
 
 	return `graphs/roads-france-${departmentCode}.json`;
+}
+
+async function buildGraphsInBatches(departments) {
+	stepInfo(TRANSFORMER_NAME, 4, "Building graphs sequentially");
+
+	const graphFilenames = [];
+
+	// Traiter séquentiellement pour éviter de saturer la mémoire
+	for (let i = 0; i < departments.length; i++) {
+		const dept = departments[i];
+		info(
+			TRANSFORMER_NAME,
+			`Processing department ${i + 1}/${departments.length}: ${dept.code}`,
+		);
+
+		const graphFile = await buildGraphForDepartment(dept.code);
+		graphFilenames.push(graphFile);
+
+		// Force garbage collection entre chaque département si disponible
+		if (global.gc) {
+			global.gc();
+		}
+	}
+
+	stat(TRANSFORMER_NAME, "Graphs generated", graphFilenames.length);
+	return graphFilenames;
 }
 
 async function roadsFranceTransformer(inputStreamData, inputStreamDepartments) {
@@ -260,9 +335,9 @@ async function roadsFranceTransformer(inputStreamData, inputStreamDepartments) {
 	const departmentsRaw = await streamToString(inputStreamDepartments);
 	const processedDepartments = processDepartments(departmentsRaw);
 
-	const [streams, filenames] = await initializeWriters(processedDepartments);
+	const { streams, buffers } = await initializeWriters(processedDepartments);
 
-	stepInfo(TRANSFORMER_NAME, 3, "Processing road features line by line");
+	stepInfo(TRANSFORMER_NAME, 3, "Dispatching road features to departments");
 
 	const rlData = readline.createInterface({
 		input: inputStreamData,
@@ -278,10 +353,10 @@ async function roadsFranceTransformer(inputStreamData, inputStreamDepartments) {
 
 		const matchedDepts = getMatchingDepartments(feature, processedDepartments);
 
-		matchedDepts.forEach((code) => {
-			writeToStream(streams, code, feature);
+		for (const code of matchedDepts) {
+			writeToStream(streams, buffers, code, feature);
 			assignedCount++;
-		});
+		}
 
 		processedCount++;
 		progressIncremental(
@@ -295,21 +370,18 @@ async function roadsFranceTransformer(inputStreamData, inputStreamDepartments) {
 	stat(TRANSFORMER_NAME, "Total road features processed", processedCount);
 	stat(TRANSFORMER_NAME, "Total feature assignments", assignedCount);
 
-	stepInfo(TRANSFORMER_NAME, 4, "Closing output streams");
-	closeWriters(streams);
+	closeWriters(streams, buffers);
 
-	stepInfo(TRANSFORMER_NAME, 5, "Building graphs for all departments");
-	const graphFilenames = [];
-
+	// Créer le dossier des graphes
 	const graphsDirPath = path.join(__dirname, "..", "results", "graphs");
 	await fs.promises.mkdir(graphsDirPath, { recursive: true });
 
-	for (const dept of processedDepartments) {
-		const graphFile = await buildGraphForDepartment(dept.code);
-		graphFilenames.push(graphFile);
-	}
+	// Construire les graphes par batch pour éviter de saturer la mémoire
+	const graphFilenames = await buildGraphsInBatches(processedDepartments);
 
-	stat(TRANSFORMER_NAME, "Graphs generated", graphFilenames.length);
+	const filenames = processedDepartments.map(
+		(dept) => `roads/roads-france-${dept.code}.geojson`,
+	);
 
 	const duration = Date.now() - startTime;
 	endTransform(TRANSFORMER_NAME, [...filenames, ...graphFilenames], duration);

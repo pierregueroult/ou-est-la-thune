@@ -1,5 +1,7 @@
-#!/usr/bin/env node
+#!/usr/bin/env node --expose-gc --max-old-space-size=4096
 "use strict";
+
+// voir https://nodejs.org/en/learn/diagnostics/memory/understanding-and-tuning-memory pour les args de commandes
 
 const { transform } = require("./transform.js");
 const ipFranceTransformer = require("./transformers/ip-france.js");
