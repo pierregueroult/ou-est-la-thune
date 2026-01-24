@@ -23,7 +23,6 @@ let globalUserPosition = null;
 let globalRadiusMeters = 2000;
 let globalGeoLayer = null;
 let globalClosestCashPoints = [];
-let globalFreeMode = false;
 let globalMap = null;
 let globalCircle = null;
 let globalUserMarker = null;
@@ -230,10 +229,7 @@ async function fetchGeoData() {
 	return await response.json();
 }
 
-function createGeoLayer(data, userPosition, radiusMeters, freeMode = false) {
-	// le geolayer qui limite avec la position seulement dans le mode normal
-	if (freeMode) return null;
-
+function createGeoLayer(data, userPosition, radiusMeters) {
 	return L.geoJSON(data, {
 		filter: (feature) => {
 			// on prend que les features qui sont à proximité
@@ -287,32 +283,26 @@ async function updateUserLocation() {
 		globalUserMarker.setLatLng(newPosition);
 		globalUserPosition = newPosition;
 
-		if (!globalFreeMode) {
-			// si on n'est pas en mode free on met à jour le cercle
-			globalCircle.setLatLng(newPosition);
+		// on met à jour le cercle
+		globalCircle.setLatLng(newPosition);
 
-			// on retire l'ancien layer
-			if (globalGeoLayer) {
-				globalMap.removeLayer(globalGeoLayer);
-			}
-
-			// on recrée le geolayer avec la nouvelle position
-			const newGeoLayer = createGeoLayer(
-				globalData,
-				newPosition,
-				globalRadiusMeters,
-				false,
-			);
-			newGeoLayer.addTo(globalMap);
-			globalGeoLayer = newGeoLayer;
-
-			// la position de l'utilisateur a changé, on recalcule les distributeurs les plus proches
-			globalClosestCashPoints = defineClosestCashPoints(
-				globalData,
-				newPosition,
-			);
-			printClosestCashPoints(globalClosestCashPoints);
+		// on retire l'ancien layer
+		if (globalGeoLayer) {
+			globalMap.removeLayer(globalGeoLayer);
 		}
+
+		// on recrée le geolayer avec la nouvelle position
+		const newGeoLayer = createGeoLayer(
+			globalData,
+			newPosition,
+			globalRadiusMeters,
+		);
+		newGeoLayer.addTo(globalMap);
+		globalGeoLayer = newGeoLayer;
+
+		// la position de l'utilisateur a changé, on recalcule les distributeurs les plus proches
+		globalClosestCashPoints = defineClosestCashPoints(globalData, newPosition);
+		printClosestCashPoints(globalClosestCashPoints);
 
 		return newPosition;
 	} catch (error) {
@@ -400,57 +390,6 @@ function setupClickOnClosestCashPoints(closestCashPoints) {
 	}
 }
 
-function setupModeSwitch() {
-	const modeSwitch = document.getElementById("mode");
-	const radiusControl = document.querySelector(".radius-control");
-
-	const toggleMode = () => {
-		const isChecked = modeSwitch.getAttribute("aria-checked") === "true";
-		const newState = !isChecked;
-
-		modeSwitch.setAttribute("aria-checked", newState);
-		globalFreeMode = newState;
-
-		// on retire le layer présent (outdated)
-		if (globalGeoLayer) {
-			globalMap.removeLayer(globalGeoLayer);
-			globalGeoLayer = null;
-		}
-
-		if (globalFreeMode) {
-			// si on passe en freemode alors on retire le cercle du mode normal
-			if (globalCircle) globalMap.removeLayer(globalCircle);
-
-			// masquer le slider en mode free
-			if (radiusControl) radiusControl.style.display = "none";
-
-			// on crée un layer vide pour le remplir après
-			globalGeoLayer = L.layerGroup().addTo(globalMap);
-			updateClusterLayer(globalMap, globalData);
-		} else {
-			// en mode normal on remet le cercle sur la carte
-			if (globalCircle) globalCircle.addTo(globalMap);
-
-			// afficher le slider en mode normal
-			if (radiusControl) radiusControl.style.display = "";
-
-			// on recrée le geolayer principal avec seulement les éléments dans le rayon
-			const newGeoLayer = createGeoLayer(
-				globalData,
-				globalUserPosition,
-				globalRadiusMeters,
-				false,
-			);
-
-			// on l'ajoute à la carte
-			newGeoLayer.addTo(globalMap);
-			globalGeoLayer = newGeoLayer;
-		}
-	};
-
-	modeSwitch.addEventListener("click", toggleMode);
-}
-
 function setupRadiusControl() {
 	const radiusSlider = document.getElementById("selected_radius");
 	const radiusValueDisplay = document.getElementById("radius-value");
@@ -459,27 +398,23 @@ function setupRadiusControl() {
 	const updateRadius = (newRadiusMeters) => {
 		globalRadiusMeters = newRadiusMeters;
 
-		// si on est dans le mode normal
-		if (!globalFreeMode) {
-			if (globalGeoLayer) globalMap.removeLayer(globalGeoLayer);
+		if (globalGeoLayer) globalMap.removeLayer(globalGeoLayer);
 
-			// Deleting the previous itinerary if its out of the new radius
-			if (globalItineraryLayer) {
-				globalMap.removeLayer(globalItineraryLayer);
-			}
-
-			// on recrée le geolayer avec le nouveau rayon
-			const newGeoLayer = createGeoLayer(
-				globalData,
-				globalUserPosition,
-				globalRadiusMeters,
-				false,
-			);
-
-			newGeoLayer.addTo(globalMap);
-			globalGeoLayer = newGeoLayer;
-			globalCircle.setRadius(globalRadiusMeters);
+		// Deleting the previous itinerary if its out of the new radius
+		if (globalItineraryLayer) {
+			globalMap.removeLayer(globalItineraryLayer);
 		}
+
+		// on recrée le geolayer avec le nouveau rayon
+		const newGeoLayer = createGeoLayer(
+			globalData,
+			globalUserPosition,
+			globalRadiusMeters,
+		);
+
+		newGeoLayer.addTo(globalMap);
+		globalGeoLayer = newGeoLayer;
+		globalCircle.setRadius(globalRadiusMeters);
 
 		radiusLoader.classList.add("hidden");
 	};
@@ -491,26 +426,13 @@ function setupRadiusControl() {
 
 		radiusValueDisplay.textContent = formatRadiusDisplay(newRadiusMeters);
 
-		if (!globalFreeMode) {
-			radiusLoader.classList.remove("hidden");
-		}
+		radiusLoader.classList.remove("hidden");
 
 		debouncedUpdate(newRadiusMeters);
 	});
 }
 
 function setupMapEvents() {
-	const onMove = () => {
-		if (globalFreeMode) {
-			// en mode libre on met à jour les clusters à chaque fois
-			// ou alors les markers affichés
-			updateClusterLayer(globalMap, globalData);
-		}
-	};
-
-	globalMap.on("moveend", onMove);
-	globalMap.on("zoomend", onMove);
-
 	globalMap.whenReady(setupForm);
 }
 
@@ -527,7 +449,6 @@ window.onload = async () => {
 		globalData,
 		globalUserPosition,
 		globalRadiusMeters,
-		false,
 	);
 	globalGeoLayer.addTo(globalMap);
 
@@ -547,7 +468,6 @@ window.onload = async () => {
 	setupZoomControls();
 	setupRadiusControl();
 	setupClickOnClosestCashPoints(globalClosestCashPoints);
-	setupModeSwitch();
 	setupMapEvents();
 	setupCreditsModal();
 };

@@ -24,25 +24,10 @@ function updateStartPointDisplay() {
 	}
 }
 
-// Récupérer tous les distributeurs disponibles selon le mode
+// Récupérer tous les distributeurs disponibles
 function getAvailableATMs() {
 	const atms = [];
 
-	// En mode libre, on peut rechercher dans TOUS les DABs de France
-	if (globalFreeMode && globalData) {
-		// Parcourir toutes les features du dataset complet
-		globalData.features.forEach((feature) => {
-			if (feature.geometry && feature.geometry.coordinates) {
-				atms.push({
-					feature: feature,
-					coords: feature.geometry.coordinates,
-				});
-			}
-		});
-		return atms;
-	}
-
-	// En mode normal, uniquement les DABs affichés
 	if (!globalGeoLayer) return atms;
 
 	globalGeoLayer.eachLayer((layer) => {
@@ -277,26 +262,14 @@ function setupForm() {
 	const radiusSlider = document.getElementById("selected_radius");
 	if (radiusSlider) {
 		radiusSlider.addEventListener("change", () => {
-			if (!globalFreeMode) {
-				setTimeout(() => searchATMs(destinationSearch.value), 600);
-			}
-		});
-	}
-
-	// Mettre à jour quand on change de mode
-	const modeSwitch = document.getElementById("mode");
-	if (modeSwitch) {
-		modeSwitch.addEventListener("click", () => {
-			setTimeout(() => searchATMs(destinationSearch.value), 300);
+			setTimeout(() => searchATMs(destinationSearch.value), 600);
 		});
 	}
 
 	// Mettre à jour après le mouvement de la carte (mode normal uniquement)
 	if (globalMap) {
 		globalMap.on("moveend", () => {
-			if (!globalFreeMode) {
-				setTimeout(() => searchATMs(destinationSearch.value), 200);
-			}
+			setTimeout(() => searchATMs(destinationSearch.value), 200);
 		});
 	}
 }
