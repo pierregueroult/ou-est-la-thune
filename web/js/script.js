@@ -200,13 +200,6 @@ async function fetchOutlinesDepartmentsData() {
 	return await response.json();
 }
 
-async function fetchRoadsData(numDep) {
-	const response = await fetch(
-		"../data/roads/roads-france-" + numDep + ".geojson",
-	);
-	return await response.json();
-}
-
 function createCircle(userPosition, radiusMeters) {
 	return L.circle(userPosition, {
 		radius: radiusMeters,
@@ -409,7 +402,7 @@ function setupRadiusControl() {
 				globalMap.removeLayer(globalGeoLayer);
 			}
 
-			// Deleting the previous itinerary if its out of the new radius 
+			// Deleting the previous itinerary if its out of the new radius
 			if (globalItineraryLayer) {
 				globalMap.removeLayer(globalItineraryLayer);
 			}
