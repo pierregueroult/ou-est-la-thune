@@ -72,84 +72,139 @@ function formatRadiusDisplay(meters) {
 	return `${meters}m`;
 }
 
-function createPopupListItem(label, value) {
-	if (!value) return null;
+function translateType(type) {
+	const types = {
+		bank: "Banque",
+		atm: "Distributeur Automatique",
+	};
+	return types[type.toLowerCase()] || type;
+}
 
-	// création d'un item pour la popup sur la carte
-	const li = document.createElement("li");
-	const strong = document.createElement("strong");
-	strong.textContent = `${label}: `;
-	li.appendChild(strong);
-	li.appendChild(document.createTextNode(value));
+function translateAccessibility(access) {
+	if (!access) return "Non";
+	const types = {
+		yes: "Oui",
+		limited: "Partiel",
+		no: "Non",
+	};
+	return types[access.toLowerCase()] || access;
+}
 
-	return li;
+function getOpeningHoursHTML(openingHoursString) {
+	if (!openingHoursString) return "";
+
+	if (openingHoursString === "24/7") {
+		return `
+		<table class="hours-table">
+			<tr>
+				<td class="hours-day">Lun-Dim</td>
+				<td class="hours-time">24h/24</td>
+			</tr>
+		</table>`;
+	}
+
+	const daysMap = {
+		Mo: "Lun",
+		Tu: "Mar",
+		We: "Mer",
+		Th: "Jeu",
+		Fr: "Ven",
+		Sa: "Sam",
+		Su: "Dim",
+		PH: "Férié",
+	};
+
+	const normalizedString = openingHoursString.replace(
+		/([0-9:]+|off)\s*,\s*(Mo|Tu|We|Th|Fr|Sa|Su|PH)/g,
+		"$1; $2",
+	);
+
+	const segments = normalizedString.split(";");
+	let rowsHTML = "";
+
+	segments.forEach((segment) => {
+		segment = segment.trim();
+		if (!segment) return;
+		if (segment.includes("off")) return;
+
+		const firstSpaceIndex = segment.indexOf(" ");
+		if (firstSpaceIndex === -1) return;
+
+		let daysPart = segment.substring(0, firstSpaceIndex);
+		let hoursPart = segment.substring(firstSpaceIndex + 1);
+
+		Object.entries(daysMap).forEach(([en, fr]) => {
+			daysPart = daysPart.replace(new RegExp(en, "g"), fr);
+		});
+
+		rowsHTML += `
+		<tr>
+			<td class="hours-day">${daysPart}</td>
+			<td class="hours-time">${hoursPart}</td>
+		</tr>`;
+	});
+
+	if (!rowsHTML) return "";
+
+	return `<table class="hours-table">${rowsHTML}</table>`;
 }
 
 function addEventOnPoint(feature) {
-	// on créer la pop up pour la feature données + on la bind au marker
-
 	const p = feature.properties;
 	const container = document.createElement("div");
 	container.className = "bank-popup";
 
-	if (p.image) {
-		const img = document.createElement("img");
-		img.src = p.image;
-		img.alt = p.brand || p.name || "Image de la banque";
-		img.className = "bank-popup-image";
-		container.appendChild(img);
-	}
+	const locationParts = [p.meta_name_com, p.meta_name_dep].filter(Boolean);
+	const location = locationParts.length > 0 ? locationParts.join(", ") : null;
 
-	if (p.brand || p.name) {
-		const title = document.createElement("h3");
-		title.textContent = p.brand || p.name;
-		container.appendChild(title);
-	}
-
-	const list = document.createElement("ul");
-	list.className = "bank-details";
-
-	const items = [
-		["Type", p.type],
-		["Opérateur", p.operator],
-		["Accessibilité", p.wheelchair],
-		["Horaires", p.opening_hours],
+	const infoItems = [
+		{ label: "Opérateur", value: p.operator },
+		{ label: "Accessibilité", value: translateAccessibility(p.wheelchair) },
+		{ label: "Lieu", value: location },
 	];
 
-	items.forEach(([label, value]) => {
-		const item = createPopupListItem(label, value);
-		if (item) list.appendChild(item);
-	});
+	let openingHours = p.opening_hours;
+	if (!openingHours && p.type === "atm") openingHours = "24/7";
 
-	const locationParts = [p.meta_name_com, p.meta_name_dep].filter(Boolean);
-	if (locationParts.length > 0) {
-		const locationItem = createPopupListItem("Lieu", locationParts.join(", "));
-		if (locationItem) list.appendChild(locationItem);
+	let hoursHTML = "";
+	if (openingHours) {
+		hoursHTML = getOpeningHoursHTML(openingHours);
+	} else {
+		hoursHTML = `
+		<div class="bank-info-row">
+			<span class="bank-info-label">Horaires : </span>
+			<span>Inconnus</span>
+		</div>`;
 	}
 
-	if (p.meta_osm_url) {
-		const li = document.createElement("li");
-		const link = document.createElement("a");
-		link.href = p.meta_osm_url;
-		link.target = "_blank";
-		link.rel = "noopener noreferrer";
-		link.textContent = "Voir sur OpenStreetMap";
-		li.appendChild(link);
-		list.appendChild(li);
-	}
+	const infosHTML = infoItems
+		.filter((item) => item.value)
+		.map(
+			(item) => `
+		<div class="bank-info-row">
+			<span class="bank-info-label">${item.label} : </span>
+			<span>${item.value}</span>
+		</div>`,
+		)
+		.join("");
 
-	container.appendChild(list);
+	container.innerHTML = `
+		${p.image ? `<img src="${p.image}" alt="${p.brand || p.name || "Image de la banque"}" class="bank-popup-image">` : ""}
+		<h3>${p.brand || p.name || "Point Cash"}</h3>
+		${p.type ? `<span class="bank-popup-type">${translateType(p.type)}</span>` : ""}
+		${infosHTML}
+		${hoursHTML}
+		<button class="distance-badge itinerary-btn">Lancer l'itinéraire</button>
+	`;
 
-	const itineraryButton = document.createElement("button");
-	itineraryButton.className = "distance-badge";
-	itineraryButton.textContent = "Lancer l'itinéraire";
-	itineraryButton.addEventListener("click", async () => {
-		globalItineraryLayer = await itineraryCalcul(
-			globalUserPosition,
-			feature.geometry.coordinates,
-		);
-	});
-	container.appendChild(itineraryButton);
+	container
+		.querySelector(".itinerary-btn")
+		.addEventListener("click", async () => {
+			globalItineraryLayer = await itineraryCalcul(
+				globalUserPosition,
+				feature.geometry.coordinates,
+			);
+		});
 
 	feature._layer.bindPopup(container);
 }
