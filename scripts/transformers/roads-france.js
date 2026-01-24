@@ -9,6 +9,16 @@ const {
 	streamToString,
 	distanceMeters,
 } = require("../utils.js");
+const {
+	startTransform,
+	endTransform,
+	stepInfo,
+	stat,
+	progressIncremental,
+	info,
+} = require("../log.js");
+
+const TRANSFORMER_NAME = "roads-france";
 
 /**
  * Format du graphe généré :
@@ -51,7 +61,9 @@ function roundCost(cost) {
 }
 
 function processDepartments(geoJsonString) {
+	stepInfo(TRANSFORMER_NAME, 1, "Processing department boundaries");
 	const data = JSON.parse(geoJsonString);
+	stat(TRANSFORMER_NAME, "Total departments", data.features.length);
 
 	// pour chaque département
 	return data.features.map(({ properties, geometry }) => {
@@ -71,6 +83,11 @@ function processDepartments(geoJsonString) {
 }
 
 async function initializeWriters(departments) {
+	stepInfo(
+		TRANSFORMER_NAME,
+		2,
+		"Initializing output streams for all departments",
+	);
 	const streams = new Map();
 	let filenames = [];
 
@@ -85,6 +102,7 @@ async function initializeWriters(departments) {
 		stream.hasWritten = false;
 		streams.set(dept.code, stream);
 	}
+	stat(TRANSFORMER_NAME, "Output streams created", streams.size);
 	return [streams, filenames];
 }
 
@@ -209,12 +227,23 @@ async function buildGraphForDepartment(departmentCode) {
 		`roads-france-${departmentCode}.json`,
 	);
 
-	console.log(`Construction du graphe pour ${departmentCode}...`);
+	info(TRANSFORMER_NAME, `Building graph for department ${departmentCode}`);
 
 	const geojsonContent = await fs.promises.readFile(geojsonPath, "utf-8");
 	const geojson = JSON.parse(geojsonContent);
 
 	const graph = buildGraphFromGeoJSON(geojson);
+
+	stat(
+		`${TRANSFORMER_NAME}:${departmentCode}`,
+		"Graph nodes",
+		graph.nodes.length,
+	);
+	stat(
+		`${TRANSFORMER_NAME}:${departmentCode}`,
+		"Unique road names",
+		graph.roadNames.length,
+	);
 
 	await fs.promises.writeFile(graphPath, JSON.stringify(graph));
 
@@ -222,10 +251,18 @@ async function buildGraphForDepartment(departmentCode) {
 }
 
 async function roadsFranceTransformer(inputStreamData, inputStreamDepartments) {
+	const startTime = Date.now();
+	startTransform(TRANSFORMER_NAME, [
+		"osm-france-roads.geojson",
+		"departements-france.geojson",
+	]);
+
 	const departmentsRaw = await streamToString(inputStreamDepartments);
 	const processedDepartments = processDepartments(departmentsRaw);
 
 	const [streams, filenames] = await initializeWriters(processedDepartments);
+
+	stepInfo(TRANSFORMER_NAME, 3, "Processing road features line by line");
 
 	const rlData = readline.createInterface({
 		input: inputStreamData,
@@ -233,6 +270,7 @@ async function roadsFranceTransformer(inputStreamData, inputStreamDepartments) {
 	});
 
 	let processedCount = 0;
+	let assignedCount = 0;
 
 	for await (const line of rlData) {
 		const feature = parseGeoJSONLine(line);
@@ -242,22 +280,39 @@ async function roadsFranceTransformer(inputStreamData, inputStreamDepartments) {
 
 		matchedDepts.forEach((code) => {
 			writeToStream(streams, code, feature);
+			assignedCount++;
 		});
 
 		processedCount++;
-		if (processedCount % 10000 === 0) {
-			console.log(`${processedCount} features traitées`);
-		}
+		progressIncremental(
+			TRANSFORMER_NAME,
+			processedCount,
+			10000,
+			"road features processed",
+		);
 	}
 
+	stat(TRANSFORMER_NAME, "Total road features processed", processedCount);
+	stat(TRANSFORMER_NAME, "Total feature assignments", assignedCount);
+
+	stepInfo(TRANSFORMER_NAME, 4, "Closing output streams");
 	closeWriters(streams);
 
+	stepInfo(TRANSFORMER_NAME, 5, "Building graphs for all departments");
 	const graphFilenames = [];
+
+	const graphsDirPath = path.join(__dirname, "..", "results", "graphs");
+	await fs.promises.mkdir(graphsDirPath, { recursive: true });
 
 	for (const dept of processedDepartments) {
 		const graphFile = await buildGraphForDepartment(dept.code);
 		graphFilenames.push(graphFile);
 	}
+
+	stat(TRANSFORMER_NAME, "Graphs generated", graphFilenames.length);
+
+	const duration = Date.now() - startTime;
+	endTransform(TRANSFORMER_NAME, [...filenames, ...graphFilenames], duration);
 
 	return [...filenames, ...graphFilenames];
 }

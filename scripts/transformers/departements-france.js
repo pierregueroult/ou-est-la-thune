@@ -1,50 +1,69 @@
 const { streamToString, getBoundingBox } = require("../utils.js");
 const { writeResult } = require("../file-system.js");
+const { startTransform, endTransform, stepInfo, stat } = require("../log.js");
+
+const TRANSFORMER_NAME = "departements-france";
 
 async function departementsFranceTransformer(stream) {
-  const content = await streamToString(stream);
-  const data = JSON.parse(content);
+	const startTime = Date.now();
+	startTransform(TRANSFORMER_NAME, "departements-france.geojson");
 
-  const features = data.features.map((feature) => {
-    const { geometry, properties } = feature;
-    const { type, coordinates } = geometry;
+	stepInfo(TRANSFORMER_NAME, 1, "Reading GeoJSON content");
+	const content = await streamToString(stream);
 
-    // On ne garde que les contours extérieurs pour minimiser la taille
-    // (suppression des trous)
-    let newCoordinates;
-    if (type === "Polygon") {
-      newCoordinates = [coordinates[0]];
-    } else if (type === "MultiPolygon") {
-      newCoordinates = coordinates.map((poly) => [poly[0]]);
-    } else {
-      newCoordinates = coordinates;
-    }
+	stepInfo(TRANSFORMER_NAME, 2, "Parsing GeoJSON data");
+	const data = JSON.parse(content);
 
-    const bbox = getBoundingBox(coordinates);
+	stat(TRANSFORMER_NAME, "Total departments", data.features.length);
 
-    return {
-      type: "Feature",
-      bbox: bbox,
-      geometry: {
-        type: type,
-        coordinates: newCoordinates,
-      },
-      properties: {
-        code: properties.code,
-        nom: properties.nom,
-      },
-    };
-  });
+	stepInfo(TRANSFORMER_NAME, 3, "Processing and minifying department features");
 
-  const geojson = {
-    type: "FeatureCollection",
-    features: features,
-  };
+	const features = data.features.map((feature) => {
+		const { geometry, properties } = feature;
+		const { type, coordinates } = geometry;
 
-  const outputFilename = "departements-france.geojson";
-  await writeResult(outputFilename, JSON.stringify(geojson));
+		// On ne garde que les contours extérieurs pour minimiser la taille
+		// (suppression des trous)
+		let newCoordinates;
+		if (type === "Polygon") {
+			newCoordinates = [coordinates[0]];
+		} else if (type === "MultiPolygon") {
+			newCoordinates = coordinates.map((poly) => [poly[0]]);
+		} else {
+			newCoordinates = coordinates;
+		}
 
-  return [outputFilename];
+		const bbox = getBoundingBox(coordinates);
+
+		return {
+			type: "Feature",
+			bbox: bbox,
+			geometry: {
+				type: type,
+				coordinates: newCoordinates,
+			},
+			properties: {
+				code: properties.code,
+				nom: properties.nom,
+			},
+		};
+	});
+
+	const geojson = {
+		type: "FeatureCollection",
+		features: features,
+	};
+
+	stat(TRANSFORMER_NAME, "Processed features", features.length);
+
+	stepInfo(TRANSFORMER_NAME, 4, "Writing minified GeoJSON output");
+	const outputFilename = "departements-france.geojson";
+	await writeResult(outputFilename, JSON.stringify(geojson));
+
+	const duration = Date.now() - startTime;
+	endTransform(TRANSFORMER_NAME, outputFilename, duration);
+
+	return [outputFilename];
 }
 
 module.exports = departementsFranceTransformer;

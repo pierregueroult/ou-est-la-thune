@@ -1,13 +1,10 @@
 
-scripts/results/roads/*
-scripts/results/graphs/*
+scripts/results/roads/*.geojson
+scripts/results/graphs/*.json
 scripts/results/*.geojson
 
-!scripts/results/roads/.gitkeep
-!scripts/results/graphs/.gitkeep
-
-web/data/*
-!web/data/.gitkeep
+web/data/*.geojson
+web/data/graphs/*.json
 
 .DS_Store
 TODO.md
