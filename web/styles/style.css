@@ -662,3 +662,22 @@ select {
 		transform: rotate(360deg);
 	}
 }
+
+@keyframes pulse {
+	0% {
+		box-shadow: 0 0 0 0 rgba(16, 72, 67, 0.5);
+	}
+
+	70% {
+		box-shadow: 0 0 0 10px rgba(16, 72, 67, 0);
+	}
+
+	100% {
+		box-shadow: 0 0 0 0 rgba(16, 72, 67, 0);
+	}
+}
+
+.user-marker {
+	animation: pulse 2s infinite;
+	border-radius: 50%;
+}
