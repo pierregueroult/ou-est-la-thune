@@ -16,6 +16,7 @@ const URLS = {
 	MARKER_BANK: "../assets/images/marker-bank.png",
 	MARKER_ATM: "../assets/images/marker-atm.png",
 	MARKER_SHADOW: "../assets/images/marker-shadow.png",
+	MARKER_USER: "../assets/images/marker-user.png",
 };
 
 // Variables globales pour gérer l'état de l'application
@@ -263,7 +264,14 @@ function createIcon(feature) {
 }
 
 function createUserMarker(userPosition) {
-	return L.marker(userPosition);
+	const userIcon = new L.Icon({
+		iconUrl: URLS.MARKER_USER,
+		iconSize: [40, 40],
+		iconAnchor: [20, 20],
+		popupAnchor: [0, -20],
+		className: "user-marker",
+	});
+	return L.marker(userPosition, { icon: userIcon });
 }
 
 async function fetchOutlinesDepartmentsData() {
