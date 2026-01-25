@@ -8,6 +8,8 @@ const CONSTANTS = {
 		KM_THRESHOLD: 1000,
 	},
 	DEBOUNCE_DELAY_MS: 500,
+	POSITION_UPDATE_INTERVAL_MS: 30000,
+	POSITION_UPDATE_THRESHOLD_METERS: 5,
 };
 
 const URLS = {
@@ -374,6 +376,56 @@ function setupLocateButton() {
 	});
 }
 
+let globalPositionIntervalId = null;
+
+function startPositionAutoUpdate() {
+	if (globalPositionIntervalId) {
+		clearInterval(globalPositionIntervalId);
+	}
+
+	globalPositionIntervalId = setInterval(async () => {
+		try {
+			const newPosition = await getLocation();
+			const [oldLat, oldLng] = globalUserPosition;
+			const [newLat, newLng] = newPosition;
+
+			const distanceMoved = distanceMeters([oldLat, oldLng], [newLat, newLng]);
+
+			if (distanceMoved > CONSTANTS.POSITION_UPDATE_THRESHOLD_METERS) {
+				globalUserMarker.setLatLng(newPosition);
+				globalUserPosition = newPosition;
+				globalCircle.setLatLng(newPosition);
+
+				if (globalGeoLayer) {
+					globalMap.removeLayer(globalGeoLayer);
+				}
+
+				const newGeoLayer = createGeoLayer(
+					globalData,
+					newPosition,
+					globalRadiusMeters,
+				);
+				newGeoLayer.addTo(globalMap);
+				globalGeoLayer = newGeoLayer;
+
+				globalClosestCashPoints = defineClosestCashPoints(globalData, newPosition);
+				printClosestCashPoints(globalClosestCashPoints);
+
+				console.log(`Position mise à jour (déplacement: ${roundToInteger(distanceMoved)}m)`);
+			}
+		} catch (error) {
+			console.warn("Erreur lors de la mise à jour automatique de la position:", error);
+		}
+	}, CONSTANTS.POSITION_UPDATE_INTERVAL_MS);
+}
+
+function stopPositionAutoUpdate() {
+	if (globalPositionIntervalId) {
+		clearInterval(globalPositionIntervalId);
+		globalPositionIntervalId = null;
+	}
+}
+
 function setupZoomControls() {
 	document.getElementById("zoom-in").addEventListener("click", () => {
 		globalMap.zoomIn();
@@ -525,6 +577,7 @@ window.onload = async () => {
 	setupClickOnClosestCashPoints(globalClosestCashPoints);
 	setupMapEvents();
 	setupCreditsModal();
+	startPositionAutoUpdate();
 };
 
 function setupCreditsModal() {
