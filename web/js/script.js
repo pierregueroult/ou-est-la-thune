@@ -200,10 +200,47 @@ function addEventOnPoint(feature) {
 	container
 		.querySelector(".itinerary-btn")
 		.addEventListener("click", async () => {
-			globalItineraryLayer = await itineraryCalcul(
+			const itinerary = await itineraryCalcul(
 				globalUserPosition,
 				feature.geometry.coordinates,
 			);
+
+			// Displaying the itinerary
+			document.getElementById("sidebar").style.display = "none";
+			document.getElementById("itinerary-sidebar").style.display = "flex";
+
+			// Displaying total distance
+			const totalDistance = document.getElementById("itinerary-total-distance");
+			totalDistance.innerHTML = "";
+			if (itinerary[0] >= CONSTANTS.DISTANCE_THRESHOLDS.KM_THRESHOLD) {
+				totalDistance.textContent = `${roundToTwoDecimals(itinerary[0] / 1000)}km`;
+			} else {
+				totalDistance.textContent = `${roundToInteger(itinerary[0])}m`;
+			}
+
+			// Displaying each roads informations
+			const stepsList = document.getElementById("itinerary-steps");
+			stepsList.innerHTML = "";
+
+			itinerary[1].forEach((step) => {
+				const li = document.createElement("li");
+
+				const distanceSpan = document.createElement("span");
+				const nameSpan = document.createElement("span");
+
+				nameSpan.textContent = `${step.road} sur `;
+				const roadDistances = step.distance;
+				if (roadDistances >= CONSTANTS.DISTANCE_THRESHOLDS.KM_THRESHOLD) {
+					distanceSpan.textContent = `${roundToTwoDecimals(roadDistances / 1000)}km`;
+				} else {
+					distanceSpan.textContent = `${roundToInteger(roadDistances)}m`;
+				}
+
+				li.appendChild(nameSpan);
+				li.appendChild(distanceSpan);
+
+				stepsList.appendChild(li);
+			});
 		});
 
 	feature._layer.bindPopup(container);
@@ -342,6 +379,7 @@ async function updateUserLocation() {
 		// on retire l'ancien layer
 		if (globalGeoLayer) {
 			globalMap.removeLayer(globalGeoLayer);
+			globalGeoLayer = null;
 		}
 
 		// on recrée le geolayer avec la nouvelle position
@@ -450,11 +488,15 @@ function setupRadiusControl() {
 	const updateRadius = (newRadiusMeters) => {
 		globalRadiusMeters = newRadiusMeters;
 
-		if (globalGeoLayer) globalMap.removeLayer(globalGeoLayer);
+		if (globalGeoLayer){
+			globalMap.removeLayer(globalGeoLayer);
+			globalGeoLayer = null;
+		}
 
 		// Deleting the previous itinerary if its out of the new radius
 		if (globalItineraryLayer) {
 			globalMap.removeLayer(globalItineraryLayer);
+			globalItineraryLayer = null;
 		}
 
 		// on recrée le geolayer avec le nouveau rayon
@@ -521,6 +563,7 @@ window.onload = async () => {
 	setupClickOnClosestCashPoints(globalClosestCashPoints);
 	setupMapEvents();
 	setupCreditsModal();
+	setupItineraryEvent();
 };
 
 function setupCreditsModal() {
@@ -543,5 +586,15 @@ function setupCreditsModal() {
 		if (e.target === modal) {
 			modal.close();
 		}
+	});
+}
+
+async function setupItineraryEvent() {
+	document.getElementById("btn-stop-itinerary").addEventListener("click", async () => {
+		document.getElementById("sidebar").style.display = "flex";
+		document.getElementById("itinerary-sidebar").style.display = "none";
+		globalMap.removeLayer(globalItineraryLayer);
+		globalItineraryLayer = null;
+		await updateUserLocation();
 	});
 }

@@ -336,11 +336,7 @@ async function itineraryCalcul(userPosition, positionToReach) {
 	// Log itinerary information
 	const totalDistance = defineTotalDistanceItinerary(leafletCoords);
 	const roadRecap = buildRoadsRecap(pathIndexes, roadsGraph);
-	console.log(`Distance totale: ${Math.round(totalDistance)} m`);
-	console.log("Récap de l'itinéraire:");
-	roadRecap.forEach((step) => {
-		console.log(`- ${step.distance} m sur ${step.road}`);
-	});
+  const itinerary = [totalDistance, roadRecap];
 
 	// Display itinerary on map
 	globalItineraryLayer = L.polyline(leafletCoords, {
@@ -351,5 +347,5 @@ async function itineraryCalcul(userPosition, positionToReach) {
 
 	globalMap.fitBounds(globalItineraryLayer.getBounds());
 
-	return globalItineraryLayer;
+	return itinerary;
 }

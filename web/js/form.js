@@ -42,87 +42,17 @@ function getAvailableATMs() {
 	return atms;
 }
 
-// TO TEST, + verif
+// TODO
 function isOpenCashPoint(openingHours) {
 
 	if (!openingHours) return false;
 	if (openingHours === "24/7") return true;
 
-	const now = new Date();
+	const currentDate = new Date();
 	const currentDay = now.getDay(); // 0 = Dim, 1 = Lun, 6 = Sam
 	const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-	const dayMap = {
-		Mo: 1,
-		Tu: 2,
-		We: 3,
-		Th: 4,
-		Fr: 5,
-		Sa: 6,
-		Su: 0,
-	};
-
-	const normalized = openingHours.replace(
-		/([0-9:]+|off)\s*,\s*(Mo|Tu|We|Th|Fr|Sa|Su)/g,
-		"$1; $2",
-	);
-
-	const segments = normalized.split(";");
-
-	for (let segment of segments) {
-		segment = segment.trim();
-		if (!segment || segment.includes("off")) continue;
-
-		const spaceIndex = segment.indexOf(" ");
-		if (spaceIndex === -1) continue;
-
-		const daysPart = segment.substring(0, spaceIndex);
-		const hoursPart = segment.substring(spaceIndex + 1);
-
-		// Days
-		let validDay = false;
-
-		if (daysPart.includes("-")) {
-			// Exemple : Mo-Fr
-			const [start, end] = daysPart.split("-");
-			const startDay = dayMap[start];
-			const endDay = dayMap[end];
-
-			if (startDay <= endDay) {
-				validDay =
-					currentDay >= startDay && currentDay <= endDay;
-			} else {
-				// Cas rare : Su-Mo
-				validDay =
-					currentDay >= startDay || currentDay <= endDay;
-			}
-		} else {
-			// Exemple : Mo ou Sa
-			const day = dayMap[daysPart];
-			validDay = currentDay === day;
-		}
-
-		if (!validDay) continue;
-
-		// ---- Gestion des heures ----
-		const [startTime, endTime] = hoursPart.split("-");
-		if (!startTime || !endTime) continue;
-
-		const [sh, sm] = startTime.split(":").map(Number);
-		const [eh, em] = endTime.split(":").map(Number);
-
-		const startMinutes = sh * 60 + sm;
-		const endMinutes = eh * 60 + em;
-
-		if (
-			currentMinutes >= startMinutes &&
-			currentMinutes <= endMinutes
-		) {
-			return true;
-		}
-	}
-
-	return false;
+	return true;
 }
 
 // Recherche et mise à jour des résultats

@@ -1027,3 +1027,8 @@ button.loading::after {
 	background-color: var(--border);
 	margin: 0;
 }
+
+
+#itinerary-sidebar{
+	display : none;
+}
