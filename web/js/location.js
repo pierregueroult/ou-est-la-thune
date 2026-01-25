@@ -12,6 +12,10 @@ function convertIpToNumber(ip) {
 
 async function fetchUserIp() {
   const response = await fetch("https://api.ipify.org?format=json");
+  if (!response.ok) {
+    console.warn("Erreur lors de la récupération de l'adresse IP");
+    return null;
+  }
   const data = await response.json();
   return data.ip;
 }
@@ -36,6 +40,10 @@ function searchLocationInGeoJson(ipNumber, geoJson) {
 
 async function fetchGeoJsonData() {
   const response = await fetch("/data/database-ip-france.geojson");
+  if (!response.ok) {
+    console.warn("Erreur lors de la récupération de la base de données géographique");
+    return null;
+  }
   return response.json();
 }
 
@@ -45,38 +53,54 @@ async function getLocationFromIP() {
     const geoJson = await fetchGeoJsonData();
     const ipNumber = convertIpToNumber(userIp);
 
-    return searchLocationInGeoJson(ipNumber, geoJson);
+    const location = searchLocationInGeoJson(ipNumber, geoJson);
+    if (!location) {
+      console.warn("IP non trouvée dans la base de données géographique");
+    }
+    return location;
   } catch (error) {
-    console.error("Error getting location from IP:", error);
+    console.warn("Erreur lors de la récupération de la position via IP:", error);
     return null;
   }
 }
 
 async function getLocationFromNavigator() {
+  if (!navigator.geolocation) {
+    console.warn("Géolocalisation non supportée par le navigateur");
+    return null;
+  }
+
   try {
     const position = await new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject);
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        maximumAge: 60000,
+      });
     });
 
     return [position.coords.latitude, position.coords.longitude];
   } catch (error) {
-    console.error("Error getting location from navigator:", error);
+    const errorMessages = {
+      1: "Permission de géolocalisation refusée",
+      2: "Position indisponible",
+      3: "Timeout de la géolocalisation",
+    };
+
+    const message = error.code
+      ? errorMessages[error.code] || error.message
+      : error.message;
+
+    console.warn("Géolocalisation navigateur échouée:", message);
     return null;
   }
 }
 
-// chopper la localisation d'après le navigateur, sinon ip, sinon default_location
 async function getLocation() {
-  try {
-    const navigatorLocation = await getLocationFromNavigator();
-    if (navigatorLocation) return navigatorLocation;
+  const navigatorLocation = await getLocationFromNavigator();
+  if (navigatorLocation) return navigatorLocation;
 
-    const ipLocation = await getLocationFromIP();
-    if (ipLocation) return ipLocation;
+  const ipLocation = await getLocationFromIP();
+  if (ipLocation) return ipLocation;
 
-    return DEFAULT_LOCATION;
-  } catch (error) {
-    console.error("Error getting location:", error);
-    return DEFAULT_LOCATION;
-  }
+  return DEFAULT_LOCATION;
 }
