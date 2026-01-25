@@ -31,6 +31,7 @@ let globalUserMarker = null;
 let globalData = null;
 let globalItineraryLayer = null;
 let globalItineraryTarget = null;
+let globalDestinationMarker = null;
 
 function distanceMeters([lat1, lng1], [lat2, lng2]) {
 	// calcule de distance entre deux lat,long avec la formule de Haversine formula
@@ -204,6 +205,7 @@ function addEventOnPoint(feature) {
 		.querySelector(".itinerary-btn")
 		.addEventListener("click", async () => {
 			globalItineraryTarget = feature.geometry.coordinates;
+			updateDestinationMarker(feature);
 			globalItineraryLayer = await itineraryCalcul(
 				globalUserPosition,
 				globalItineraryTarget,
@@ -268,6 +270,24 @@ function createIcon(feature) {
 
 function createUserMarker(userPosition) {
 	return L.marker(userPosition);
+}
+
+function updateDestinationMarker(feature) {
+	if (globalDestinationMarker) {
+		globalMap.removeLayer(globalDestinationMarker);
+	}
+
+	if (feature._layer) {
+		feature._layer.closePopup();
+	}
+
+	const [lng, lat] = feature.geometry.coordinates;
+
+	globalDestinationMarker = L.marker([lat, lng], {
+		icon: createIcon(feature),
+	});
+
+	globalDestinationMarker.addTo(globalMap);
 }
 
 async function fetchOutlinesDepartmentsData() {
