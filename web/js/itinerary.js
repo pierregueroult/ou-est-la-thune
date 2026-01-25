@@ -298,7 +298,6 @@ function mergeGraphs(graph1, graph2) {
 }
 
 async function itineraryCalcul(userPosition, positionToReach) {
-	positionToReach = [positionToReach[1], positionToReach[0]]; // ICI TEST
 
 	// Remove previous itinerary
 	if (globalItineraryLayer) {

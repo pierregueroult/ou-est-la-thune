@@ -288,13 +288,12 @@ function createGeoLayer(data, userPosition, radiusMeters) {
 	return L.geoJSON(data, {
 		filter: (feature) => {
 			// on prend que les features qui sont à proximité
-			const [lng, lat] = feature.geometry.coordinates;
-			const distance = distanceMeters(userPosition, [lat, lng]);
+			const distance = distanceMeters(userPosition, feature.geometry.coordinates);
 			return distance <= radiusMeters;
 		},
-		pointToLayer: (feature, latlng) => {
+		pointToLayer: (feature) => {
 			// petit icone sympa
-			return L.marker(latlng, { icon: createIcon(feature) });
+			return L.marker(feature.geometry.coordinates, { icon: createIcon(feature) });
 		},
 		onEachFeature: (feature, layer) => {
 			// on stocke la référence du layer sur la feature pour pouvoir l'utiliser plus tard
@@ -308,8 +307,7 @@ function createGeoLayer(data, userPosition, radiusMeters) {
 function defineClosestCashPoints(data, userPosition) {
 	// on calcule les distances pour chaque feature
 	const distances = data.features.map((feature) => {
-		const [lng, lat] = feature.geometry.coordinates;
-		const distance = distanceMeters(userPosition, [lat, lng]);
+		const distance = distanceMeters(userPosition, feature.geometry.coordinates);
 		return { feature, distance };
 	});
 
@@ -394,14 +392,13 @@ function setupClickOnClosestCashPoints(closestCashPoints) {
 
 		// quand on clique sur la card, on reset le zoom + on ouvre la popup
 		card.addEventListener("click", () => {
-			const [lng, lat] = feature.geometry.coordinates;
 
 			// on attend la fin du mouvement pour ouvrir la popup
 			globalMap.once("moveend", () => {
 				feature._layer.openPopup();
 			});
 
-			globalMap.setView([lat, lng], 18);
+			globalMap.setView(feature.geometry.coordinates, 18);
 		});
 
 		// Ajouter un bouton pour lancer l'itinéraire
@@ -499,7 +496,6 @@ window.onload = async () => {
 	globalUserPosition = await getLocation();
 
 	globalMap = createMap(globalUserPosition, tiles);
-
 	globalGeoLayer = createGeoLayer(
 		globalData,
 		globalUserPosition,
