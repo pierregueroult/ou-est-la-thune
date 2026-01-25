@@ -182,8 +182,8 @@ function addEventOnPoint(feature) {
 		.map(
 			(item) => `
 		<div class="bank-info-row">
-			<span class="bank-info-label">${item.label} : </span>
-			<span>${item.value}</span>
+			<span class="bank-info-label">${item.label} :</span>
+			<span class="bank-info-value">${item.value}</span>
 		</div>`,
 		)
 		.join("");
