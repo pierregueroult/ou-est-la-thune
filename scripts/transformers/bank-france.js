@@ -44,10 +44,27 @@ async function bankFranceTransformer(stream1, stream2) {
 		"meta_versions_number",
 	];
 
+	const { parseOpeningHours, toOSMFormat } = require("../parse-opening-hours.js");
+
 	let enrichedCount = 0;
+	let openingHoursCount = 0;
 
 	geojson.features.forEach((feature) => {
 		if (feature.properties) {
+			if (feature.properties.opening_hours) {
+				const parsed = parseOpeningHours(feature.properties.opening_hours);
+				if (parsed) {
+					const formatted = toOSMFormat(parsed);
+					if (formatted) {
+						feature.properties.opening_hours = formatted;
+						openingHoursCount++;
+					}
+				}
+			} else if (feature.properties.amenity === 'atm' || feature.properties.type === 'atm') {
+				// Default for ATMs if opening_hours is missing/empty
+				feature.properties.opening_hours = "Mo-Su 00:00-24:00";
+			}
+
 			const node = feature.properties.meta_osm_id;
 
 			const enrichedData = data.find((item) => item.id === node);
@@ -61,6 +78,8 @@ async function bankFranceTransformer(stream1, stream2) {
 			});
 		}
 	});
+
+	stat(TRANSFORMER_NAME, "Opening hours standardized", openingHoursCount);
 
 	stat(TRANSFORMER_NAME, "Features enriched with images", enrichedCount);
 	stat(
