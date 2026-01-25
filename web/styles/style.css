@@ -1,20 +1,21 @@
-/* Variables */
 :root {
-	--background: #ecf1d4;
-	--background-hover: #e1eac2;
-	--background-foreground: #000000;
+	--bg: #ecf1d4;
+	--bg-hover: #e1eac2;
+	--bg-fg: #000;
 	--primary: #104843;
 	--primary-hover: #1b615a;
-	--primary-foreground: #ffffff;
-	--card: #ffffff;
-	--card-foreground: #000000;
+	--primary-fg: #fff;
+	--card: #fff;
+	--card-fg: #000;
 	--muted: #6b7280;
 	--border: #e5e7eb;
-	--input-border: #d1d5db;
-	--input-focus: #104843;
+	--radius: 0.625rem;
+	--radius-sm: 0.375rem;
+	--shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+	--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
-/* Reset & Base */
 * {
 	box-sizing: border-box;
 }
@@ -26,43 +27,46 @@ html {
 
 body {
 	margin: 0;
-	background-color: #f5f5f5;
-	overflow: hidden; /* Prevent body scroll, map handles it */
+	background: #f5f5f5;
+	overflow: hidden;
 }
 
 button,
 input,
 select {
-	font-family: inherit;
-	font-size: 100%;
+	font: inherit;
 	margin: 0;
 }
 
-/* Map */
+.flex-col {
+	display: flex;
+	flex-direction: column;
+}
+
+.hidden {
+	display: none;
+}
+
 #map {
 	position: fixed;
 	inset: 0;
 	z-index: 0;
 }
 
-/* Sidebar */
 .sidebar {
 	position: fixed;
 	top: 1rem;
 	left: 1rem;
-	height: fit-content;
-	max-height: calc(100vh - 2rem);
 	width: 22rem;
-	background-color: var(--background);
-	border-radius: 0.75rem;
+	max-height: calc(100vh - 2rem);
 	padding: 1.25rem;
+	background: var(--bg);
+	border-radius: 0.75rem;
+	box-shadow: var(--shadow-lg);
+	z-index: 1000;
 	display: flex;
 	flex-direction: column;
 	gap: 1.25rem;
-	box-shadow:
-		0 10px 15px -3px rgb(0 0 0 / 0.1),
-		0 4px 6px -4px rgb(0 0 0 / 0.1);
-	z-index: 1000;
 }
 
 .sidebar header {
@@ -74,10 +78,9 @@ select {
 	font-size: 1.25rem;
 	font-weight: 600;
 	margin: 0;
-	color: var(--background-foreground);
+	color: var(--bg-fg);
 }
 
-/* Search Section & Forms */
 .search-section form {
 	display: flex;
 	flex-direction: column;
@@ -96,13 +99,22 @@ select {
 	font-weight: 600;
 }
 
-.start-point-display {
+.start-point-display,
+.destination-wrapper input {
 	padding: 0.75rem;
 	border: 1px solid var(--border);
 	border-radius: 0.5rem;
 	background: white;
 	font-size: 0.875rem;
+}
+
+.start-point-display {
 	color: var(--muted);
+}
+
+.destination-wrapper input:focus {
+	outline: none;
+	border-color: var(--primary);
 }
 
 .destination-wrapper {
@@ -113,34 +125,23 @@ select {
 .destination-wrapper input {
 	flex: 1;
 	min-width: 0;
-	padding: 0.75rem;
-	border: 1px solid var(--border);
-	border-radius: 0.5rem;
-	background: white;
-	font-size: 0.875rem;
-}
-
-.destination-wrapper input:focus {
-	outline: none;
-	border-color: var(--primary);
 }
 
 #destination-select {
 	position: absolute;
 	top: 100%;
-	left: 0;
-	right: 0;
-	padding: 0.5rem;
-	border: 1px solid var(--border);
-	border-radius: 0.5rem;
-	background: white;
-	font-size: 0.875rem;
+	inset-inline: 0;
 	margin-top: 0.5rem;
+	padding: 0.5rem;
 	max-height: 200px;
 	overflow-y: auto;
+	background: white;
+	border: 1px solid var(--border);
+	border-radius: 0.5rem;
+	box-shadow: var(--shadow-md);
+	font-size: 0.875rem;
 	z-index: 100;
-	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-	display: none; /* Controlled by JS */
+	display: none;
 }
 
 #destination-select option {
@@ -150,19 +151,17 @@ select {
 
 .divider {
 	height: 1px;
-	background-color: var(--border);
-	width: 100%;
+	background: var(--border);
 }
 
-/* Radius Control */
 .radius-control {
 	display: flex;
 	flex-direction: column;
 	gap: 0.5rem;
 	padding: 0.75rem;
-	background-color: var(--card);
-	border-radius: 0.625rem;
-	box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+	background: var(--card);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
 }
 
 .radius-label-wrapper {
@@ -187,8 +186,8 @@ select {
 	font-weight: 600;
 	color: var(--primary);
 	padding: 0.25rem 0.5rem;
-	background-color: var(--background);
-	border-radius: 0.375rem;
+	background: var(--bg);
+	border-radius: var(--radius-sm);
 }
 
 .radius-loader {
@@ -204,9 +203,8 @@ select {
 	appearance: none;
 	width: 100%;
 	height: 6px;
-	border-radius: 3px;
 	background: var(--border);
-	outline: none;
+	border-radius: 3px;
 	cursor: pointer;
 }
 
@@ -214,8 +212,8 @@ select {
 	appearance: none;
 	width: 18px;
 	height: 18px;
-	border-radius: 50%;
 	background: var(--primary);
+	border-radius: 50%;
 	cursor: pointer;
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
@@ -223,10 +221,10 @@ select {
 .radius-slider::-moz-range-thumb {
 	width: 18px;
 	height: 18px;
-	border-radius: 50%;
 	background: var(--primary);
-	cursor: pointer;
+	border-radius: 50%;
 	border: none;
+	cursor: pointer;
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
@@ -249,7 +247,7 @@ select {
 	font-size: 1rem;
 	font-weight: 600;
 	margin: 0;
-	color: var(--background-foreground);
+	color: var(--bg-fg);
 }
 
 .card-list {
@@ -274,16 +272,16 @@ select {
 
 .card {
 	padding: 0.875rem 1rem;
-	background-color: var(--card);
-	border-radius: 0.625rem;
-	box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-	cursor: pointer;
+	background: var(--card);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
 	border: 1px solid transparent;
+	cursor: pointer;
 	transition: all 0.2s;
 }
 
 .card:hover {
-	box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+	box-shadow: var(--shadow-md);
 	border-color: var(--primary);
 }
 
@@ -322,24 +320,24 @@ select {
 .btn-primary {
 	width: 100%;
 	padding: 0.875rem 1.25rem;
-	background-color: var(--primary);
-	color: var(--primary-foreground);
+	background: var(--primary);
+	color: var(--primary-fg);
 	border: none;
-	border-radius: 0.625rem;
+	border-radius: var(--radius);
 	font-size: 0.9375rem;
 	font-weight: 600;
 	cursor: pointer;
-	transition: background-color 0.2s;
+	transition: background 0.2s;
 }
 
 .btn-primary:hover {
-	background-color: var(--primary-hover);
+	background: var(--primary-hover);
 }
 
 .btn-go {
 	width: 3rem;
 	height: 3rem;
-	background-color: var(--primary);
+	background: var(--primary);
 	color: white;
 	border: none;
 	border-radius: 0.5rem;
@@ -351,20 +349,20 @@ select {
 }
 
 .btn-go:hover {
-	background-color: var(--primary-hover);
+	background: var(--primary-hover);
 }
 
 .controls {
 	position: fixed;
 	right: 1rem;
 	top: 1rem;
+	height: calc(100vh - 2rem);
 	display: flex;
 	flex-direction: column;
+	justify-content: space-between;
 	align-items: end;
 	gap: 0.5rem;
 	z-index: 1000;
-	height: calc(100vh - 2rem);
-	justify-content: space-between;
 }
 
 .controls-top,
@@ -381,10 +379,10 @@ select {
 	align-items: center;
 	justify-content: center;
 	border: none;
-	border-radius: 0.625rem;
+	border-radius: var(--radius);
 	cursor: pointer;
-	box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-	transition: background-color 0.2s;
+	box-shadow: var(--shadow-md);
+	transition: background 0.2s;
 }
 
 .controls button svg {
@@ -393,28 +391,28 @@ select {
 }
 
 .controls button.background {
-	background-color: var(--background);
-	color: var(--background-foreground);
+	background: var(--bg);
+	color: var(--bg-fg);
 }
 
 .controls button.background:hover {
-	background-color: var(--background-hover);
+	background: var(--bg-hover);
 }
 
 .controls button.primary {
-	background-color: var(--primary);
-	color: var(--primary-foreground);
+	background: var(--primary);
+	color: var(--primary-fg);
 }
 
 .controls button.primary:hover {
-	background-color: var(--primary-hover);
+	background: var(--primary-hover);
 }
 
 .controls-zoom {
 	display: flex;
 	flex-direction: column;
-	box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-	border-radius: 0.625rem;
+	box-shadow: var(--shadow-md);
+	border-radius: var(--radius);
 	overflow: hidden;
 }
 
@@ -427,10 +425,22 @@ select {
 	border-bottom: 1px solid var(--border);
 }
 
-/* Leaflet Popups */
+.distance-badge {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.375rem 0.75rem;
+	background: var(--primary);
+	color: var(--primary-fg);
+	border-radius: var(--radius-sm);
+	font-size: 0.8125rem;
+	font-weight: 600;
+	flex-shrink: 0;
+}
+
 .leaflet-popup-content-wrapper {
-	border-radius: 0.625rem;
-	box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow-md);
 }
 
 .leaflet-popup-content {
@@ -445,7 +455,7 @@ select {
 }
 
 .bank-popup h3 {
-	margin: 0 0 2px 0;
+	margin: 0 0 2px;
 	color: #1b615a;
 	font-size: 1.1rem;
 }
@@ -476,12 +486,27 @@ select {
 
 .bank-info-label {
 	font-weight: 600;
-	min-width: 85px;
+	width: 95px;
+	flex-shrink: 0;
 	color: #555;
 	font-size: 0.85rem;
 }
 
-/* Opening Hours Table */
+.bank-info-value {
+	flex: 1;
+}
+
+.bank-popup .distance-badge {
+	margin-top: 12px;
+	width: 100%;
+	border: none;
+	cursor: pointer;
+}
+
+.bank-popup .distance-badge:hover {
+	background: #144a44;
+}
+
 .hours-table {
 	width: 100%;
 	border-collapse: collapse;
@@ -512,32 +537,6 @@ select {
 	color: #444;
 }
 
-/* Distance Badge */
-.distance-badge {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: 0.375rem 0.75rem;
-	background-color: var(--primary);
-	color: var(--primary-foreground);
-	border-radius: 0.375rem;
-	font-size: 0.8125rem;
-	font-weight: 600;
-	flex-shrink: 0;
-}
-
-.bank-popup .distance-badge {
-	margin-top: 12px;
-	width: 100%;
-	border: none;
-	cursor: pointer;
-}
-
-.bank-popup .distance-badge:hover {
-	background: #144a44;
-}
-
-/* Modal */
 #credits-modal {
 	border: none;
 	border-radius: 0.75rem;
@@ -545,12 +544,12 @@ select {
 	max-width: 28rem;
 	width: calc(100% - 2rem);
 	max-height: calc(100vh - 4rem);
-	background-color: var(--background);
-	box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+	background: var(--bg);
+	box-shadow: var(--shadow-lg);
 }
 
 #credits-modal::backdrop {
-	background-color: rgba(16, 72, 67, 0.3);
+	background: rgba(16, 72, 67, 0.3);
 	backdrop-filter: blur(4px);
 }
 
@@ -566,7 +565,7 @@ select {
 	font-size: 1.25rem;
 	font-weight: 600;
 	margin: 0;
-	color: var(--background-foreground);
+	color: var(--bg-fg);
 }
 
 .modal-close {
@@ -579,12 +578,12 @@ select {
 	border: none;
 	cursor: pointer;
 	color: var(--muted);
-	border-radius: 0.375rem;
+	border-radius: var(--radius-sm);
 }
 
 .modal-close:hover {
-	color: var(--background-foreground);
-	background-color: var(--background-hover);
+	color: var(--bg-fg);
+	background: var(--bg-hover);
 }
 
 .modal-body {
@@ -598,8 +597,8 @@ select {
 .credits-section h3 {
 	font-size: 1rem;
 	font-weight: 600;
-	margin: 0 0 0.5rem 0;
-	color: var(--background-foreground);
+	margin: 0 0 0.5rem;
+	color: var(--bg-fg);
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
@@ -623,7 +622,7 @@ select {
 
 .section-divider {
 	height: 1px;
-	background-color: var(--border);
+	background: var(--border);
 }
 
 .developers-list {
@@ -640,9 +639,9 @@ select {
 	align-items: center;
 	gap: 0.75rem;
 	padding: 0.75rem 1rem;
-	background-color: var(--card);
-	border-radius: 0.625rem;
-	box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+	background: var(--card);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
 }
 
 .developer-item svg {
