@@ -47,6 +47,7 @@ async function bankFranceTransformer(stream1, stream2) {
 	let enrichedCount = 0;
 
 	geojson.features.forEach((feature) => {
+		feature.geometry.coordinates = [feature.geometry.coordinates[1], feature.geometry.coordinates[0]];
 		if (feature.properties) {
 			const node = feature.properties.meta_osm_id;
 
