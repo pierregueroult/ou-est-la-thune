@@ -9,7 +9,7 @@ const CONSTANTS = {
 	},
 	DEBOUNCE_DELAY_MS: 500,
 	POSITION_UPDATE_INTERVAL_MS: 30000,
-	POSITION_UPDATE_THRESHOLD_METERS: 5,
+	POSITION_UPDATE_THRESHOLD_METERS: 0,
 };
 
 const URLS = {
@@ -30,6 +30,7 @@ let globalCircle = null;
 let globalUserMarker = null;
 let globalData = null;
 let globalItineraryLayer = null;
+let globalItineraryTarget = null;
 
 function distanceMeters([lat1, lng1], [lat2, lng2]) {
 	// calcule de distance entre deux lat,long avec la formule de Haversine formula
@@ -202,9 +203,10 @@ function addEventOnPoint(feature) {
 	container
 		.querySelector(".itinerary-btn")
 		.addEventListener("click", async () => {
+			globalItineraryTarget = feature.geometry.coordinates;
 			globalItineraryLayer = await itineraryCalcul(
 				globalUserPosition,
-				feature.geometry.coordinates,
+				globalItineraryTarget,
 			);
 		});
 
@@ -410,6 +412,16 @@ function startPositionAutoUpdate() {
 
 				globalClosestCashPoints = defineClosestCashPoints(globalData, newPosition);
 				printClosestCashPoints(globalClosestCashPoints);
+
+				if (globalItineraryTarget) {
+					if (globalItineraryLayer) {
+						globalMap.removeLayer(globalItineraryLayer);
+					}
+					globalItineraryLayer = await itineraryCalcul(
+						newPosition,
+						globalItineraryTarget,
+					);
+				}
 
 				console.log(`Position mise à jour (déplacement: ${roundToInteger(distanceMoved)}m)`);
 			}
