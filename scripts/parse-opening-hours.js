@@ -118,25 +118,60 @@ const REVERSE_DAY_MAP = {
     1: 'Mo', 2: 'Tu', 3: 'We', 4: 'Th', 5: 'Fr', 6: 'Sa', 0: 'Su'
 };
 
+const ORDERED_DAYS = [1, 2, 3, 4, 5, 6, 0]; // Mo to Su
+
+/**
+ * Groups consecutive days into ranges.
+ * Example: [1, 2, 3, 5] (Mon, Tue, Wed, Fri) -> [{start: 1, end: 3}, {start: 5, end: 5}]
+ */
+function groupConsecutive(indices) {
+    if (!indices.length) return [];
+
+    // 1. Sort indices based on their position in the week (Mo->Su)
+    // ORDERED_DAYS = [1, 2, 3, 4, 5, 6, 0] so we map input days to their 0-6 index in this array
+    const orderedIndices = indices.map(d => ORDERED_DAYS.indexOf(d)).sort((a, b) => a - b);
+
+    const ranges = [];
+    let start = orderedIndices[0];
+    let prev = orderedIndices[0];
+
+    // 2. Iterate and check if current index is exactly previous index + 1
+    for (let i = 1; i < orderedIndices.length; i++) {
+        if (orderedIndices[i] === prev + 1) {
+            prev = orderedIndices[i];
+        } else {
+            // Gap detected, close current range and start new one
+            ranges.push({ start, end: prev });
+            start = orderedIndices[i];
+            prev = orderedIndices[i];
+        }
+    }
+    ranges.push({ start, end: prev });
+    return ranges;
+}
+
+function formatDayRanges(days) {
+    const ranges = groupConsecutive(days);
+    return ranges.map(r => {
+        const startDay = REVERSE_DAY_MAP[ORDERED_DAYS[r.start]];
+        if (r.start === r.end) return startDay;
+        const endDay = REVERSE_DAY_MAP[ORDERED_DAYS[r.end]];
+        return `${startDay}-${endDay}`;
+    }).join(',');
+}
+
 function toOSMFormat(parsed) {
     if (!parsed) return "";
 
-    // Order: Mo(1) to Su(0)
-    const orderedDays = [1, 2, 3, 4, 5, 6, 0];
     const groups = [];
     let currentGroup = null;
 
-    for (const dayIndex of orderedDays) {
+    // Iterate days in order (Mo->Su) to build groups of identical opening hours
+    for (const dayIndex of ORDERED_DAYS) {
         const dayData = parsed[dayIndex];
-        const timesStr = dayData.times
-            .map(t => `${t.open}-${t.close}`)
-            .join(',');
-
-        // 24/7 check per day
-        const is24h = dayData.times.some(t => t.open === '00:00' && t.close === '24:00');
-        const formattedTimes = is24h ? '24/7' : timesStr;
 
         if (dayData.closed || !dayData.times.length) {
+            // If closed, close current group (gap in opening days)
             if (currentGroup) {
                 groups.push(currentGroup);
                 currentGroup = null;
@@ -144,58 +179,31 @@ function toOSMFormat(parsed) {
             continue;
         }
 
-        if (currentGroup && currentGroup.times === formattedTimes) {
+        const is24h = dayData.times.some(t => t.open === '00:00' && t.close === '24:00');
+        const timesStr = dayData.times.map(t => `${t.open}-${t.close}`).join(',');
+
+        // Normalize time string for comparison: if 24/7, force specific string
+        const normalizedTimes = is24h ? '00:00-24:00' : timesStr;
+
+        // Verify if we can extend the current group (same hours as previous day)
+        if (currentGroup && currentGroup.times === normalizedTimes) {
             currentGroup.days.push(dayIndex);
         } else {
-            if (currentGroup) {
-                groups.push(currentGroup);
-            }
-            currentGroup = {
-                days: [dayIndex],
-                times: formattedTimes
-            };
+            // Hours changed, save current group and start a new one
+            if (currentGroup) groups.push(currentGroup);
+            currentGroup = { days: [dayIndex], times: normalizedTimes };
         }
     }
     if (currentGroup) groups.push(currentGroup);
 
-    const allDaysOpenSame = groups.length === 1 && groups[0].days.length === 7;
-    if (allDaysOpenSame && groups[0].times === '24/7') {
+
+    if (groups.length === 1 && groups[0].days.length === 7 && groups[0].times === '00:00-24:00') {
         return "Mo-Su 00:00-24:00";
     }
 
     return groups.map(g => {
-        let dayRange = "";
-        const days = g.days;
-
-        let ranges = [];
-        let start = 0;
-
-        const orderedIndices = days.map(d => orderedDays.indexOf(d));
-
-        let rangeStart = orderedIndices[0];
-        let prev = orderedIndices[0];
-
-        for (let i = 1; i < orderedIndices.length; i++) {
-            if (orderedIndices[i] === prev + 1) {
-                prev = orderedIndices[i];
-            } else {
-                ranges.push({ start: rangeStart, end: prev });
-                rangeStart = orderedIndices[i];
-                prev = orderedIndices[i];
-            }
-        }
-        ranges.push({ start: rangeStart, end: prev });
-
-        dayRange = ranges.map(r => {
-            if (r.start === r.end) return REVERSE_DAY_MAP[orderedDays[r.start]];
-            return REVERSE_DAY_MAP[orderedDays[r.start]] + "-" + REVERSE_DAY_MAP[orderedDays[r.end]];
-        }).join(',');
-
-        let times = g.times;
-        if (times === '24/7') {
-            times = '00:00-24:00';
-        }
-        return `${dayRange} ${times}`;
+        const daysStr = formatDayRanges(g.days);
+        return `${daysStr} ${g.times}`;
     }).join('; ');
 }
 
