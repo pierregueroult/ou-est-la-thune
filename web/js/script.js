@@ -451,13 +451,6 @@ function startPositionAutoUpdate() {
 	}, CONSTANTS.POSITION_UPDATE_INTERVAL_MS);
 }
 
-function stopPositionAutoUpdate() {
-	if (globalPositionIntervalId) {
-		clearInterval(globalPositionIntervalId);
-		globalPositionIntervalId = null;
-	}
-}
-
 function setupZoomControls() {
 	document.getElementById("zoom-in").addEventListener("click", () => {
 		globalMap.zoomIn();
