@@ -44,23 +44,37 @@ async function bankFranceTransformer(stream1, stream2) {
 		"meta_versions_number",
 	];
 
+	const { parseOpeningHours, toOSMFormat } = require("../parse-opening-hours.js");
+
 	let enrichedCount = 0;
+	let openingHoursCount = 0;
 
-	geojson.features.forEach((feature) => {
-		if (feature.properties) {
-			const node = feature.properties.meta_osm_id;
 
-			const enrichedData = data.find((item) => item.id === node);
-			if (enrichedData && "panoramax_image" in enrichedData) {
-				feature.properties.image = enrichedData.panoramax_image;
-				enrichedCount++;
-			}
+	const enrichedMap = new Map(data.map(item => [item.id, item]));
 
-			propertiesToRemove.forEach((prop) => {
-				delete feature.properties[prop];
-			});
+	for (const feature of geojson.features) {
+		const props = feature.properties;
+		if (!props) continue;
+
+		// Standardize opening hours
+		if (props.opening_hours) {
+			const formatted = toOSMFormat(parseOpeningHours(props.opening_hours));
+			props.opening_hours = formatted || null;
+			if (formatted) openingHoursCount++;
+		} else if (props.type === 'atm') {
+			props.opening_hours = "Mo-Su 00:00-24:00";
 		}
-	});
+
+		const enriched = enrichedMap.get(props.meta_osm_id);
+		if (enriched?.panoramax_image) {
+			props.image = enriched.panoramax_image;
+			enrichedCount++;
+		}
+
+		for (const prop of propertiesToRemove) delete props[prop];
+	}
+
+	stat(TRANSFORMER_NAME, "Opening hours standardized", openingHoursCount);
 
 	stat(TRANSFORMER_NAME, "Features enriched with images", enrichedCount);
 	stat(
