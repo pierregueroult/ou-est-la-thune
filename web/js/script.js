@@ -228,7 +228,7 @@ function addEventOnPoint(feature) {
 				const distanceSpan = document.createElement("span");
 				const nameSpan = document.createElement("span");
 
-				nameSpan.textContent = `${step.road} sur `;
+				nameSpan.textContent = `${step.road}`;
 				const roadDistances = step.distance;
 				if (roadDistances >= CONSTANTS.DISTANCE_THRESHOLDS.KM_THRESHOLD) {
 					distanceSpan.textContent = `${roundToTwoDecimals(roadDistances / 1000)}km`;
@@ -488,7 +488,7 @@ function setupRadiusControl() {
 	const updateRadius = (newRadiusMeters) => {
 		globalRadiusMeters = newRadiusMeters;
 
-		if (globalGeoLayer){
+		if (globalGeoLayer) {
 			globalMap.removeLayer(globalGeoLayer);
 			globalGeoLayer = null;
 		}
