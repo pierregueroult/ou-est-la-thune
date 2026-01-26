@@ -58,7 +58,11 @@ async function bankFranceTransformer(stream1, stream2) {
 					if (formatted) {
 						feature.properties.opening_hours = formatted;
 						openingHoursCount++;
+					} else {
+						feature.properties.opening_hours = null;
 					}
+				} else {
+					feature.properties.opening_hours = null;
 				}
 			} else if (feature.properties.amenity === 'atm' || feature.properties.type === 'atm') {
 				// Default for ATMs if opening_hours is missing/empty

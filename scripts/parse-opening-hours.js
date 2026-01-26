@@ -69,8 +69,75 @@ function parseRule(str) {
     return { days: parseDays(daysPart), times: parseTimeRanges(timesPart) };
 }
 
+
+const MANUAL_OVERRIDES = {
+    "Du lundi au samedi, uniquement sur rendez-vous": null,
+    "Jorraire a la con ... mar-ven : 8H45-12H30, 13H45-17H45. Jeu : 8H45-12H30, 14H45-17H45. Sam : 8H45-13H00": "Tu-Fr 08:45-12:30,13:45-17:45; Th 08:45-12:30,14:45-17:45; Sa 08:45-13:00",
+    "Lundi : fermé ; Mardi, mercredi, jeudi, vendredi 08:45-12:00 13:30-17:45 ; Samedi 08:45-12:00 13:30-16:00": "Mo off; Tu-Fr 08:45-12:00,13:30-17:45; Sa 08:45-12:00,13:30-16:00",
+    "Lundi au samedi sur rdv": null,
+    "Rendez vous uniquement ( COVID)": null,
+    "Sur rendez vous": null,
+    "\"sur rendez-vous\"": null,
+    "on appointment": null,
+    "ouvert sur rendez-vous sur bred.fr, appli BRED, ou 0806060211": null,
+    "réception clients sur rendez vous": null,
+    "sur RDV": null,
+    "sur rdv, tel 04 84 68 84 20": null,
+    "sur rendez-vous": null,
+    "uniquement sur rdv l'après-midi": null,
+    "uniquement sur rendez-vous l'après-midi": null,
+    "Crédit Agricole": null,
+    "H24": "Mo-Su 00:00-24:00",
+    "Mo-Sa 9:30-20:-30": "Mo-Sa 09:30-20:30",
+};
+
+function preprocess(str) {
+    if (!str) return str;
+
+    // Check manual overrides first (trim quotes if needed)
+    let cleanStr = str.replace(/^["']|["']$/g, '').trim();
+    if (Object.prototype.hasOwnProperty.call(MANUAL_OVERRIDES, cleanStr)) {
+        return MANUAL_OVERRIDES[cleanStr];
+    }
+
+    // Generic fixes
+    let processed = cleanStr;
+
+    // Replace French days
+    processed = processed.replace(/lundi/gi, 'Mo').replace(/mardi/gi, 'Tu').replace(/mercredi/gi, 'We').replace(/jeudi/gi, 'Th').replace(/vendredi/gi, 'Fr').replace(/samedi/gi, 'Sa').replace(/dimanche/gi, 'Su');
+    processed = processed.replace(/lun\.?/gi, 'Mo').replace(/mar\.?/gi, 'Tu').replace(/mer\.?/gi, 'We').replace(/jeu\.?/gi, 'Th').replace(/ven\.?/gi, 'Fr').replace(/sam\.?/gi, 'Sa').replace(/dim\.?/gi, 'Su');
+
+    // Replace "à" "au"
+    processed = processed.replace(/\s+au\s+/gi, '-').replace(/\s+à\s+/gi, '-');
+
+    // Remove "fermé", "ferme" -> "off"
+    processed = processed.replace(/ferm[ée]s?/gi, 'off');
+
+    // Replace "H" or "h" in times with ":"
+    processed = processed.replace(/(\d{1,2})[hH](\d{2})/g, '$1:$2');
+
+    // Normalize simple typo "20:-30"
+    processed = processed.replace(/:(\W)(\d{2})/, ':$2');
+
+    // Normalize "1200" -> "12:00" when appearing as end time or start (careful with years)
+    // Heuristic: matching \d{4} usually in ranges.
+    // e.g. 09:00-1200, 1400-18:00
+    processed = processed.replace(/\b(\d{2})(\d{2})\b/g, (match, p1, p2) => {
+        const h = parseInt(p1);
+        const m = parseInt(p2);
+        if (h >= 0 && h <= 24 && m >= 0 && m < 60) return `${p1}:${p2}`;
+        return match;
+    });
+
+    return processed;
+}
+
+
 function parseOpeningHours(str) {
     if (!str || typeof str !== 'string') return null;
+
+    str = preprocess(str);
+    if (!str) return null;
 
     str = str.replace(/(\d)\s*,\s*([a-zA-Z]{2,3})/g, '$1; $2');
 
@@ -78,7 +145,7 @@ function parseOpeningHours(str) {
 
     str.split(';').forEach(rule => {
         const trimmed = rule.trim();
-        if (!trimmed || trimmed.toLowerCase().startsWith('ph')) return;
+        if (!trimmed) return;
 
         const parsed = parseRule(trimmed);
         if (!parsed?.days) return;
