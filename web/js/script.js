@@ -8,6 +8,8 @@ const CONSTANTS = {
 		KM_THRESHOLD: 1000,
 	},
 	DEBOUNCE_DELAY_MS: 500,
+	POSITION_UPDATE_INTERVAL_MS: 30000,
+	POSITION_UPDATE_THRESHOLD_METERS: 0,
 };
 
 const URLS = {
@@ -16,6 +18,7 @@ const URLS = {
 	MARKER_BANK: "../assets/images/marker-bank.png",
 	MARKER_ATM: "../assets/images/marker-atm.png",
 	MARKER_SHADOW: "../assets/images/marker-shadow.png",
+	MARKER_USER: "../assets/images/marker-user.png",
 };
 
 // Variables globales pour gérer l'état de l'application
@@ -28,6 +31,8 @@ let globalCircle = null;
 let globalUserMarker = null;
 let globalData = null;
 let globalItineraryLayer = null;
+let globalItineraryTarget = null;
+let globalDestinationMarker = null;
 
 function distanceMeters([lat1, lng1], [lat2, lng2]) {
 	// calcule de distance entre deux lat,long avec la formule de Haversine formula
@@ -182,8 +187,8 @@ function addEventOnPoint(feature) {
 		.map(
 			(item) => `
 		<div class="bank-info-row">
-			<span class="bank-info-label">${item.label} : </span>
-			<span>${item.value}</span>
+			<span class="bank-info-label">${item.label} :</span>
+			<span class="bank-info-value">${item.value}</span>
 		</div>`,
 		)
 		.join("");
@@ -200,10 +205,15 @@ function addEventOnPoint(feature) {
 	container
 		.querySelector(".itinerary-btn")
 		.addEventListener("click", async () => {
+			globalItineraryTarget = feature.geometry.coordinates;
+			updateDestinationMarker(feature);
+
 			const itinerary = await itineraryCalcul(
 				globalUserPosition,
-				feature.geometry.coordinates,
+				globalItineraryTarget,
 			);
+
+			console.log("itinerary", itinerary);
 
 			// Displaying the itinerary
 			document.getElementById("sidebar").style.display = "none";
@@ -300,7 +310,32 @@ function createIcon(feature) {
 }
 
 function createUserMarker(userPosition) {
-	return L.marker(userPosition);
+	const userIcon = new L.Icon({
+		iconUrl: URLS.MARKER_USER,
+		iconSize: [40, 40],
+		iconAnchor: [20, 20],
+		popupAnchor: [0, -20],
+		className: "user-marker",
+	});
+	return L.marker(userPosition, { icon: userIcon });
+}
+
+function updateDestinationMarker(feature) {
+	if (globalDestinationMarker) {
+		globalMap.removeLayer(globalDestinationMarker);
+	}
+
+	if (feature._layer) {
+		feature._layer.closePopup();
+	}
+
+	const [lng, lat] = feature.geometry.coordinates;
+
+	globalDestinationMarker = L.marker([lat, lng], {
+		icon: createIcon(feature),
+	});
+
+	globalDestinationMarker.addTo(globalMap);
 }
 
 async function fetchOutlinesDepartmentsData() {
@@ -408,6 +443,59 @@ function setupLocateButton() {
 	locateButton.addEventListener("click", async () => {
 		await updateUserLocation();
 	});
+}
+
+let globalPositionIntervalId = null;
+
+function startPositionAutoUpdate() {
+	if (globalPositionIntervalId) {
+		clearInterval(globalPositionIntervalId);
+	}
+
+	globalPositionIntervalId = setInterval(async () => {
+		try {
+			const newPosition = await getLocation();
+			const [oldLat, oldLng] = globalUserPosition;
+			const [newLat, newLng] = newPosition;
+
+			const distanceMoved = distanceMeters([oldLat, oldLng], [newLat, newLng]);
+
+			if (distanceMoved > CONSTANTS.POSITION_UPDATE_THRESHOLD_METERS) {
+				globalUserMarker.setLatLng(newPosition);
+				globalUserPosition = newPosition;
+				globalCircle.setLatLng(newPosition);
+
+				if (globalGeoLayer) {
+					globalMap.removeLayer(globalGeoLayer);
+				}
+
+				const newGeoLayer = createGeoLayer(
+					globalData,
+					newPosition,
+					globalRadiusMeters,
+				);
+				newGeoLayer.addTo(globalMap);
+				globalGeoLayer = newGeoLayer;
+
+				globalClosestCashPoints = defineClosestCashPoints(globalData, newPosition);
+				printClosestCashPoints(globalClosestCashPoints);
+
+				if (globalItineraryTarget) {
+					if (globalItineraryLayer) {
+						globalMap.removeLayer(globalItineraryLayer);
+					}
+					globalItineraryLayer = await itineraryCalcul(
+						newPosition,
+						globalItineraryTarget,
+					);
+				}
+
+				console.log(`Position mise à jour (déplacement: ${roundToInteger(distanceMoved)}m)`);
+			}
+		} catch (error) {
+			console.warn("Erreur lors de la mise à jour automatique de la position:", error);
+		}
+	}, CONSTANTS.POSITION_UPDATE_INTERVAL_MS);
 }
 
 function setupZoomControls() {
@@ -564,6 +652,7 @@ window.onload = async () => {
 	setupMapEvents();
 	setupCreditsModal();
 	setupItineraryEvent();
+	startPositionAutoUpdate();
 };
 
 function setupCreditsModal() {

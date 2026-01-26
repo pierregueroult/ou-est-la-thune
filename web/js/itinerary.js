@@ -40,7 +40,7 @@ function bboxContains(point, bbox) {
 
 function getDepartmentFromCoords(position, outlinesDep) {
 
-  for (const feature of outlinesDep.features) {
+	for (const feature of outlinesDep.features) {
 		if (!bboxContains(position, feature.bbox)) {
 			continue;
 		}
@@ -58,7 +58,7 @@ function findClosestNodeIndex(coordLatLng, graph) {
 	for (let i = 0; i < graph.nodes.length; i++) {
 		const [coord] = graph.nodes[i];
 
-    const distance = distanceMeters(coordLatLng, coord);
+		const distance = distanceMeters(coordLatLng, coord);
 
 		if (distance < bestDist) {
 			bestDist = distance;
@@ -84,7 +84,7 @@ function weightedAStar(graph, start, goal, weight) {
 	const openSet = []; // Nodes to explores
 	const closedSet = new Set(); // Already explored nodes. Set for no doublons
 
-  // Obviously we firstly have the start node, the starting point
+	// Obviously we firstly have the start node, the starting point
 	openSet.push({
 		node: start,
 		g: 0,
@@ -92,7 +92,7 @@ function weightedAStar(graph, start, goal, weight) {
 		parent: -1,
 	});
 
-  // While there is still nodes to explore
+	// While there is still nodes to explore
 	while (openSet.length > 0) {
 		openSet.sort((a, b) => a.f - b.f); // Taking the best node (lowest evaluating function's result) and explore it
 		const current = openSet.shift();
@@ -104,26 +104,26 @@ function weightedAStar(graph, start, goal, weight) {
 
 		closedSet.add(current.node);
 
-    //For all the neighbors of the current node
-    const neighbors = graph.nodes[current.node][1];
+		//For all the neighbors of the current node
+		const neighbors = graph.nodes[current.node][1];
 		for (const [neighborIndex, cost] of neighbors) {
 			if (closedSet.has(neighborIndex)) continue; // We don't explore neighbor that are already explored
 
-      // Defining the evaluating function
+			// Defining the evaluating function
 			const g = current.g + cost;
 			const f = g + weight * heuristic(graph, neighborIndex, goal);
 
 			const existing = openSet.find((n) => n.node === neighborIndex);
 
 			if (!existing || g < existing.g) {
-        // Better way found, actialising the existant path
+				// Better way found, actialising the existant path
 				if (existing) {
 					existing.g = g;
 					existing.f = f;
 					existing.parent = current;
 				}
-        // Making new node to explore
-        else {
+				// Making new node to explore
+				else {
 					openSet.push({
 						node: neighborIndex,
 						g,
@@ -336,7 +336,7 @@ async function itineraryCalcul(userPosition, positionToReach) {
 	// Log itinerary information
 	const totalDistance = defineTotalDistanceItinerary(leafletCoords);
 	const roadRecap = buildRoadsRecap(pathIndexes, roadsGraph);
-  const itinerary = [totalDistance, roadRecap];
+	const itinerary = [totalDistance, roadRecap];
 
 	// Display itinerary on map
 	globalItineraryLayer = L.polyline(leafletCoords, {
