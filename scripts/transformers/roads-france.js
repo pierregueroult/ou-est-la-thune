@@ -113,7 +113,7 @@ function flushBuffer(streams, buffers, departmentCode) {
 		stream.hasWritten = true;
 	}
 
-	buffer.length = 0; // Vider le buffer
+	buffer.length = 0;
 }
 
 function writeToStream(streams, buffers, departmentCode, feature) {

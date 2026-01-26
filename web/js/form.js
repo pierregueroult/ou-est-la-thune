@@ -42,11 +42,17 @@ function getAvailableATMs() {
 	return atms;
 }
 
-// Calculer la distance pour le tri
-function getDistance(coords) {
-	if (!globalUserPosition) return Infinity;
-	const [lng, lat] = coords;
-	return distanceMeters(globalUserPosition, [lat, lng]);
+// TODO
+function isOpenCashPoint(openingHours) {
+
+	if (!openingHours) return false;
+	if (openingHours === "24/7") return true;
+
+	const currentDate = new Date();
+	const currentDay = now.getDay(); // 0 = Dim, 1 = Lun, 6 = Sam
+	const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+	return true;
 }
 
 // Recherche et mise à jour des résultats
@@ -79,7 +85,7 @@ function searchATMs(searchTerm) {
 			results = results
 				.map((atm) => ({
 					...atm,
-					distance: getDistance(atm.coords),
+					distance: distanceMeters(atm.coords, globalUserPosition),
 				}))
 				.sort((a, b) => a.distance - b.distance);
 		}
@@ -188,13 +194,25 @@ function setupForm() {
 		closestButton.textContent = "Calcul en cours...";
 
 		try {
-			const closest = globalClosestCashPoints[0];
-			await calculateAndShowItinerary(
-				closest.feature.geometry.coordinates,
-				closest.feature,
-			);
+			
+			// Is the cash point open ?
+			let atLeastOneOpen = false;
+			for(cashPoint of globalClosestCashPoints){
+				if(cashPoint.feature.properties.type === "atm"
+					|| isOpenCashPoint(cashPoint.feature.properties.opening_hours)){
+					atLeastOneOpen = true;
+					await calculateAndShowItinerary(
+						cashPoint.feature.geometry.coordinates,
+						cashPoint.feature,
+					);
+				}
+			}
+			if(!atLeastOneOpen){
+				throw "Erreur : Aucun distributeur proche n'est ouvert."
+			}
+
 		} catch (error) {
-			console.error("Erreur lors du calcul de l'itinéraire:", error);
+			console.error("Erreur lors du calcul de l'itinéraire : ", error);
 			alert("Impossible de calculer l'itinéraire");
 		} finally {
 			closestButton.disabled = false;

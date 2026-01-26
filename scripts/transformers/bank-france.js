@@ -49,10 +49,10 @@ async function bankFranceTransformer(stream1, stream2) {
 	let enrichedCount = 0;
 	let openingHoursCount = 0;
 
-
 	const enrichedMap = new Map(data.map(item => [item.id, item]));
 
 	for (const feature of geojson.features) {
+		feature.geometry.coordinates = [feature.geometry.coordinates[1], feature.geometry.coordinates[0]];
 		const props = feature.properties;
 		if (!props) continue;
 

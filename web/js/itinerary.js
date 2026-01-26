@@ -39,7 +39,7 @@ function bboxContains(point, bbox) {
 }
 
 function getDepartmentFromCoords(position, outlinesDep) {
-	// position is expected in [lat, long] format
+
 	for (const feature of outlinesDep.features) {
 		if (!bboxContains(position, feature.bbox)) {
 			continue;
@@ -57,7 +57,7 @@ function findClosestNodeIndex(coordLatLng, graph) {
 
 	for (let i = 0; i < graph.nodes.length; i++) {
 		const [coord] = graph.nodes[i];
-		// coord and coordLatLng are both [lat, long]
+
 		const distance = distanceMeters(coordLatLng, coord);
 
 		if (distance < bestDist) {
@@ -73,18 +73,18 @@ function findClosestNodeIndex(coordLatLng, graph) {
 function heuristic(graph, pointIndex, destIndex) {
 	const [pointCoord] = graph.nodes[pointIndex];
 	const [destCoord] = graph.nodes[destIndex];
-	// pointCoord and destCoord are [lat, long]
 	return distanceMeters(pointCoord, destCoord);
 }
 
-// Weighted A* algorithm: f(n) = g(n) + weight * h(n)
-// - g(n): actual cost from start to node n
-// - h(n): heuristic estimate from node n to goal
-// - weight: importance factor (> 1 favors speed over optimality)
+// Evaluating function : f(n) = g(n) + w * h(n)
+// g : node cost
+// w : weight (importance factor given by the WA* algorithm)
+// h : heuristic (evaluating the resting distance to reach the destination)
 function weightedAStar(graph, start, goal, weight) {
-	const openSet = [];
-	const closedSet = new Set();
+	const openSet = []; // Nodes to explores
+	const closedSet = new Set(); // Already explored nodes. Set for no doublons
 
+	// Obviously we firstly have the start node, the starting point
 	openSet.push({
 		node: start,
 		g: 0,
@@ -92,34 +92,38 @@ function weightedAStar(graph, start, goal, weight) {
 		parent: -1,
 	});
 
+	// While there is still nodes to explore
 	while (openSet.length > 0) {
-		// Get node with lowest f value
-		openSet.sort((a, b) => a.f - b.f);
+		openSet.sort((a, b) => a.f - b.f); // Taking the best node (lowest evaluating function's result) and explore it
 		const current = openSet.shift();
 
-		// Goal reached
+		// If the node is the final destination, return
 		if (current.node === goal) {
 			return reconstructPath(current);
 		}
 
 		closedSet.add(current.node);
 
-		// Explore neighbors
-		const [, neighbors] = graph.nodes[current.node];
+		//For all the neighbors of the current node
+		const neighbors = graph.nodes[current.node][1];
 		for (const [neighborIndex, cost] of neighbors) {
-			if (closedSet.has(neighborIndex)) continue;
+			if (closedSet.has(neighborIndex)) continue; // We don't explore neighbor that are already explored
 
+			// Defining the evaluating function
 			const g = current.g + cost;
 			const f = g + weight * heuristic(graph, neighborIndex, goal);
 
 			const existing = openSet.find((n) => n.node === neighborIndex);
 
 			if (!existing || g < existing.g) {
+				// Better way found, actialising the existant path
 				if (existing) {
 					existing.g = g;
 					existing.f = f;
 					existing.parent = current;
-				} else {
+				}
+				// Making new node to explore
+				else {
 					openSet.push({
 						node: neighborIndex,
 						g,
@@ -294,9 +298,6 @@ function mergeGraphs(graph1, graph2) {
 }
 
 async function itineraryCalcul(userPosition, positionToReach) {
-	// userPosition comes as [lat, long] from Leaflet - already correct format
-	// positionToReach comes as [long, lat] from GeoJSON, convert to [lat, long]
-	positionToReach = [positionToReach[1], positionToReach[0]];
 
 	// Remove previous itinerary
 	if (globalItineraryLayer) {
@@ -330,17 +331,12 @@ async function itineraryCalcul(userPosition, positionToReach) {
 	// Convert path to coordinates
 	const pathCoords = pathIndexesToCoords(pathIndexes, roadsGraph);
 
-	// pathCoords are already [lat, long], perfect for Leaflet
 	const leafletCoords = pathCoords;
 
 	// Log itinerary information
 	const totalDistance = defineTotalDistanceItinerary(leafletCoords);
 	const roadRecap = buildRoadsRecap(pathIndexes, roadsGraph);
-	console.log(`Distance totale: ${Math.round(totalDistance)} m`);
-	console.log("Récap de l'itinéraire:");
-	roadRecap.forEach((step) => {
-		console.log(`- ${step.distance} m sur ${step.road}`);
-	});
+	const itinerary = [totalDistance, roadRecap];
 
 	// Display itinerary on map
 	globalItineraryLayer = L.polyline(leafletCoords, {
@@ -351,5 +347,5 @@ async function itineraryCalcul(userPosition, positionToReach) {
 
 	globalMap.fitBounds(globalItineraryLayer.getBounds());
 
-	return globalItineraryLayer;
+	return itinerary;
 }
