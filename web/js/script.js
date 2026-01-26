@@ -202,9 +202,15 @@ function addEventOnPoint(feature) {
 		<button class="distance-badge itinerary-btn">Lancer l'itinéraire</button>
 	`;
 
-	container
-		.querySelector(".itinerary-btn")
-		.addEventListener("click", async () => {
+	const itineraryBtn = container.querySelector(".itinerary-btn");
+	itineraryBtn.addEventListener("click", async () => {
+		// État de chargement
+		const originalText = itineraryBtn.textContent;
+		itineraryBtn.disabled = true;
+		itineraryBtn.classList.add("loading");
+		itineraryBtn.innerHTML = '<span class="btn-spinner"></span>Calcul en cours...';
+
+		try {
 			globalItineraryTarget = feature.geometry.coordinates;
 			updateDestinationMarker(feature);
 
@@ -249,7 +255,16 @@ function addEventOnPoint(feature) {
 
 				stepsList.appendChild(li);
 			});
-		});
+		} catch (error) {
+			console.error("Erreur lors du calcul de l'itinéraire:", error);
+			alert("Impossible de calculer l'itinéraire");
+		} finally {
+			// Réinitialiser l'état du bouton
+			itineraryBtn.disabled = false;
+			itineraryBtn.classList.remove("loading");
+			itineraryBtn.innerHTML = originalText;
+		}
+	});
 
 	feature._layer.bindPopup(container);
 }
