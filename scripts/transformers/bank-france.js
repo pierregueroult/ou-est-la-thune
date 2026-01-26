@@ -49,39 +49,30 @@ async function bankFranceTransformer(stream1, stream2) {
 	let enrichedCount = 0;
 	let openingHoursCount = 0;
 
-	geojson.features.forEach((feature) => {
-		if (feature.properties) {
-			if (feature.properties.opening_hours) {
-				const parsed = parseOpeningHours(feature.properties.opening_hours);
-				if (parsed) {
-					const formatted = toOSMFormat(parsed);
-					if (formatted) {
-						feature.properties.opening_hours = formatted;
-						openingHoursCount++;
-					} else {
-						feature.properties.opening_hours = null;
-					}
-				} else {
-					feature.properties.opening_hours = null;
-				}
-			} else if (feature.properties.amenity === 'atm' || feature.properties.type === 'atm') {
-				// Default for ATMs if opening_hours is missing/empty
-				feature.properties.opening_hours = "Mo-Su 00:00-24:00";
-			}
 
-			const node = feature.properties.meta_osm_id;
+	const enrichedMap = new Map(data.map(item => [item.id, item]));
 
-			const enrichedData = data.find((item) => item.id === node);
-			if (enrichedData && "panoramax_image" in enrichedData) {
-				feature.properties.image = enrichedData.panoramax_image;
-				enrichedCount++;
-			}
+	for (const feature of geojson.features) {
+		const props = feature.properties;
+		if (!props) continue;
 
-			propertiesToRemove.forEach((prop) => {
-				delete feature.properties[prop];
-			});
+		// Standardize opening hours
+		if (props.opening_hours) {
+			const formatted = toOSMFormat(parseOpeningHours(props.opening_hours));
+			props.opening_hours = formatted || null;
+			if (formatted) openingHoursCount++;
+		} else if (props.type === 'atm') {
+			props.opening_hours = "Mo-Su 00:00-24:00";
 		}
-	});
+
+		const enriched = enrichedMap.get(props.meta_osm_id);
+		if (enriched?.panoramax_image) {
+			props.image = enriched.panoramax_image;
+			enrichedCount++;
+		}
+
+		for (const prop of propertiesToRemove) delete props[prop];
+	}
 
 	stat(TRANSFORMER_NAME, "Opening hours standardized", openingHoursCount);
 

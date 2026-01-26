@@ -1,5 +1,6 @@
 /**
  * OSM opening_hours parser
+ * inspired by open-source parsing found on github (lost the link :/)
  * @see https://wiki.openstreetmap.org/wiki/Key:opening_hours
  */
 
@@ -91,45 +92,27 @@ const MANUAL_OVERRIDES = {
     "Mo-Sa 9:30-20:-30": "Mo-Sa 09:30-20:30",
 };
 
+const FRENCH_DAYS = {
+    lundi: 'Mo', mardi: 'Tu', mercredi: 'We', jeudi: 'Th', vendredi: 'Fr', samedi: 'Sa', dimanche: 'Su',
+    lun: 'Mo', mar: 'Tu', mer: 'We', jeu: 'Th', ven: 'Fr', sam: 'Sa', dim: 'Su'
+};
+const FRENCH_DAY_REGEX = new RegExp(Object.keys(FRENCH_DAYS).join('|') + '\\.?', 'gi');
+
 function preprocess(str) {
     if (!str) return str;
 
-    // Check manual overrides first (trim quotes if needed)
-    let cleanStr = str.replace(/^["']|["']$/g, '').trim();
-    if (Object.prototype.hasOwnProperty.call(MANUAL_OVERRIDES, cleanStr)) {
-        return MANUAL_OVERRIDES[cleanStr];
-    }
+    const cleanStr = str.replace(/^["']|["']$/g, '').trim();
+    if (cleanStr in MANUAL_OVERRIDES) return MANUAL_OVERRIDES[cleanStr];
 
-    // Generic fixes
-    let processed = cleanStr;
-
-    // Replace French days
-    processed = processed.replace(/lundi/gi, 'Mo').replace(/mardi/gi, 'Tu').replace(/mercredi/gi, 'We').replace(/jeudi/gi, 'Th').replace(/vendredi/gi, 'Fr').replace(/samedi/gi, 'Sa').replace(/dimanche/gi, 'Su');
-    processed = processed.replace(/lun\.?/gi, 'Mo').replace(/mar\.?/gi, 'Tu').replace(/mer\.?/gi, 'We').replace(/jeu\.?/gi, 'Th').replace(/ven\.?/gi, 'Fr').replace(/sam\.?/gi, 'Sa').replace(/dim\.?/gi, 'Su');
-
-    // Replace "à" "au"
-    processed = processed.replace(/\s+au\s+/gi, '-').replace(/\s+à\s+/gi, '-');
-
-    // Remove "fermé", "ferme" -> "off"
-    processed = processed.replace(/ferm[ée]s?/gi, 'off');
-
-    // Replace "H" or "h" in times with ":"
-    processed = processed.replace(/(\d{1,2})[hH](\d{2})/g, '$1:$2');
-
-    // Normalize simple typo "20:-30"
-    processed = processed.replace(/:(\W)(\d{2})/, ':$2');
-
-    // Normalize "1200" -> "12:00" when appearing as end time or start (careful with years)
-    // Heuristic: matching \d{4} usually in ranges.
-    // e.g. 09:00-1200, 1400-18:00
-    processed = processed.replace(/\b(\d{2})(\d{2})\b/g, (match, p1, p2) => {
-        const h = parseInt(p1);
-        const m = parseInt(p2);
-        if (h >= 0 && h <= 24 && m >= 0 && m < 60) return `${p1}:${p2}`;
-        return match;
-    });
-
-    return processed;
+    return cleanStr
+        .replace(FRENCH_DAY_REGEX, m => FRENCH_DAYS[m.replace('.', '').toLowerCase()])
+        .replace(/\s+(au|à)\s+/gi, '-')
+        .replace(/ferm[ée]s?/gi, 'off')
+        .replace(/(\d{1,2})[hH](\d{2})/g, '$1:$2')
+        .replace(/:(\W)(\d{2})/, ':$2')
+        .replace(/\b(\d{2})(\d{2})\b/g, (m, h, min) =>
+            +h <= 24 && +min < 60 ? `${h}:${min}` : m
+        );
 }
 
 
@@ -187,27 +170,21 @@ const REVERSE_DAY_MAP = {
 
 const ORDERED_DAYS = [1, 2, 3, 4, 5, 6, 0]; // Mo to Su
 
-/**
- * Groups consecutive days into ranges.
- * Example: [1, 2, 3, 5] (Mon, Tue, Wed, Fri) -> [{start: 1, end: 3}, {start: 5, end: 5}]
- */
+
 function groupConsecutive(indices) {
     if (!indices.length) return [];
 
-    // 1. Sort indices based on their position in the week (Mo->Su)
-    // ORDERED_DAYS = [1, 2, 3, 4, 5, 6, 0] so we map input days to their 0-6 index in this array
     const orderedIndices = indices.map(d => ORDERED_DAYS.indexOf(d)).sort((a, b) => a - b);
 
     const ranges = [];
     let start = orderedIndices[0];
     let prev = orderedIndices[0];
 
-    // 2. Iterate and check if current index is exactly previous index + 1
+
     for (let i = 1; i < orderedIndices.length; i++) {
         if (orderedIndices[i] === prev + 1) {
             prev = orderedIndices[i];
         } else {
-            // Gap detected, close current range and start new one
             ranges.push({ start, end: prev });
             start = orderedIndices[i];
             prev = orderedIndices[i];
@@ -233,12 +210,10 @@ function toOSMFormat(parsed) {
     const groups = [];
     let currentGroup = null;
 
-    // Iterate days in order (Mo->Su) to build groups of identical opening hours
     for (const dayIndex of ORDERED_DAYS) {
         const dayData = parsed[dayIndex];
 
         if (dayData.closed || !dayData.times.length) {
-            // If closed, close current group (gap in opening days)
             if (currentGroup) {
                 groups.push(currentGroup);
                 currentGroup = null;
@@ -249,14 +224,11 @@ function toOSMFormat(parsed) {
         const is24h = dayData.times.some(t => t.open === '00:00' && t.close === '24:00');
         const timesStr = dayData.times.map(t => `${t.open}-${t.close}`).join(',');
 
-        // Normalize time string for comparison: if 24/7, force specific string
         const normalizedTimes = is24h ? '00:00-24:00' : timesStr;
 
-        // Verify if we can extend the current group (same hours as previous day)
         if (currentGroup && currentGroup.times === normalizedTimes) {
             currentGroup.days.push(dayIndex);
         } else {
-            // Hours changed, save current group and start a new one
             if (currentGroup) groups.push(currentGroup);
             currentGroup = { days: [dayIndex], times: normalizedTimes };
         }
