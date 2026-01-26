@@ -213,8 +213,6 @@ function addEventOnPoint(feature) {
 				globalItineraryTarget,
 			);
 
-			console.log("itinerary", itinerary);
-
 			// Displaying the itinerary
 			document.getElementById("sidebar").style.display = "none";
 			document.getElementById("itinerary-sidebar").style.display = "flex";
@@ -483,14 +481,13 @@ function startPositionAutoUpdate() {
 				if (globalItineraryTarget) {
 					if (globalItineraryLayer) {
 						globalMap.removeLayer(globalItineraryLayer);
+						globalItineraryLayer = null;
 					}
 					globalItineraryLayer = await itineraryCalcul(
 						newPosition,
 						globalItineraryTarget,
 					);
 				}
-
-				console.log(`Position mise à jour (déplacement: ${roundToInteger(distanceMoved)}m)`);
 			}
 		} catch (error) {
 			console.warn("Erreur lors de la mise à jour automatique de la position:", error);
