@@ -19,6 +19,12 @@ public final class JExpress {
     String method();
 
     /**
+     * Method to get ip address.
+     * @return the IP address of the client.
+     */
+    String ip();
+
+    /**
      * The HTTP path of the request.
      * @return the HTTP path.
      */
@@ -216,6 +222,12 @@ public final class JExpress {
     @Override
     public String method() {
       return exchange.getRequestMethod().toUpperCase(Locale.ROOT);
+    }
+
+    @Override
+    public String ip() {
+      /* https://docs.oracle.com/javase/8/docs/jre/api/net/httpserver/spec/com/sun/net/httpserver/HttpExchange.html */
+      return exchange.getRemoteAddress().getAddress().getHostAddress();
     }
 
     @Override
@@ -792,6 +804,11 @@ public final class JExpress {
   static void main() {
     var app = express();
     app.use(staticFiles(Path.of(".")));
+
+    app.get("/ip", (req, res) -> {
+        res.json(Map.of("ip", req.ip()));
+    }); 
+
     app.listen(8080);
 
     System.out.println("application started on port 8080");
