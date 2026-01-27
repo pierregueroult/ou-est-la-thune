@@ -226,7 +226,13 @@ public final class JExpress {
 
     @Override
     public String ip() {
-      /* https://docs.oracle.com/javase/8/docs/jre/api/net/httpserver/spec/com/sun/net/httpserver/HttpExchange.html */
+      // Check X-Forwarded-For header first (set by reverse proxies)
+      var forwarded = exchange.getRequestHeaders().getFirst("X-Forwarded-For");
+      if (forwarded != null && !forwarded.isBlank()) {
+        return forwarded.split(",")[0].trim();
+      }
+      // Fallback to direct connection IP
+      // https://docs.oracle.com/javase/8/docs/jre/api/net/httpserver/spec/com/sun/net/httpserver/HttpExchange.html
       return exchange.getRemoteAddress().getAddress().getHostAddress();
     }
 
