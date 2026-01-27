@@ -1,0 +1,6 @@
+services:
+  app:
+    build: .
+    volumes:
+      - /home/home/osm-france-roads.geojson:/app/scripts/sources/osm-france-roads.geojson:ro
+    restart: unless-stopped

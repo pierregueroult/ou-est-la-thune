@@ -8,8 +8,8 @@
 		<script src="./assets/leaflet/leaflet.js"></script>
 		<link
 			rel="icon"
-			type="image/x-icon"
-			href="./assets/images/marker-icon-2x-red.png"
+			type="image/png"
+			href="./assets/images/marker-user.png"
 		/>
 		<link rel="stylesheet" href="./styles/style.css" />
 		<meta name="robots" content="noindex, nofollow" />
@@ -17,7 +17,7 @@
 	<body>
 		<div id="map"></div>
 
-		<aside class="sidebar">
+		<aside class="sidebar" id="sidebar">
 			<header>
 				<h1>Où est la thune ?</h1>
 			</header>
@@ -66,7 +66,7 @@
 					<div class="divider" role="presentation"></div>
 
 					<button type="button" id="btn-closest" class="btn-primary">
-						Le distributeur le plus proche
+						Aller au distributeur le plus proche
 					</button>
 					<div class="radius-control">
 						<div class="radius-label-wrapper">
@@ -154,14 +154,45 @@
 			</section>
 		</aside>
 
+		<aside class="sidebar" id="itinerary-sidebar">
+			<header>
+				<h1>Votre itinéraire</h1>
+			</header>
+
+			<section class="itinerary-section">
+
+				<article class="card">
+					<div class="card-left">
+						<div class="bank-info">
+							<h3>Distance totale</h3>
+							<span id="itinerary-total-distance">-</span>
+						</div>
+					</div>
+				</article>
+
+				<article class="card">
+					<ul
+						class="itinerary-steps"
+						id="itinerary-steps"
+						aria-label="Étapes de l'itinéraire"
+					></ul>
+				</article>
+
+				<div class="divider" role="presentation"></div>
+
+				<button
+					type="button"
+					class="btn-primary"
+					id="btn-stop-itinerary"
+				>
+					Arrêter l'itinéraire
+				</button>
+			</section>
+		</aside>
+
+
 		<aside class="controls">
 			<div class="controls-top">
-				<div class="background text switch-wrapper">
-					<button type="button" role="switch" aria-checked="false" id="mode">
-						<span class="switch-thumb"> </span>
-					</button>
-					<label for="mode">Mode libre</label>
-				</div>
 				<button
 					id="open-credits"
 					class="background icon"
@@ -400,7 +431,6 @@
 		</dialog>
 
 		<script src="./js/location.js"></script>
-		<script src="./js/cluster.js"></script>
 		<script src="./js/itinerary.js"></script>
 		<script src="./js/form.js"></script>
 		<script src="./js/script.js"></script>

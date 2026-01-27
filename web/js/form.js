@@ -24,25 +24,10 @@ function updateStartPointDisplay() {
 	}
 }
 
-// Récupérer tous les distributeurs disponibles selon le mode
+// Récupérer tous les distributeurs disponibles
 function getAvailableATMs() {
 	const atms = [];
 
-	// En mode libre, on peut rechercher dans TOUS les DABs de France
-	if (globalFreeMode && globalData) {
-		// Parcourir toutes les features du dataset complet
-		globalData.features.forEach((feature) => {
-			if (feature.geometry && feature.geometry.coordinates) {
-				atms.push({
-					feature: feature,
-					coords: feature.geometry.coordinates,
-				});
-			}
-		});
-		return atms;
-	}
-
-	// En mode normal, uniquement les DABs affichés
 	if (!globalGeoLayer) return atms;
 
 	globalGeoLayer.eachLayer((layer) => {
@@ -57,11 +42,17 @@ function getAvailableATMs() {
 	return atms;
 }
 
-// Calculer la distance pour le tri
-function getDistance(coords) {
-	if (!globalUserPosition) return Infinity;
-	const [lng, lat] = coords;
-	return distanceMeters(globalUserPosition, [lat, lng]);
+// TODO
+function isOpenCashPoint(openingHours) {
+
+	if (!openingHours) return false;
+	if (openingHours === "24/7") return true;
+
+	const currentDate = new Date();
+	const currentDay = now.getDay(); // 0 = Dim, 1 = Lun, 6 = Sam
+	const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+	return true;
 }
 
 // Recherche et mise à jour des résultats
@@ -94,7 +85,7 @@ function searchATMs(searchTerm) {
 			results = results
 				.map((atm) => ({
 					...atm,
-					distance: getDistance(atm.coords),
+					distance: distanceMeters(atm.coords, globalUserPosition),
 				}))
 				.sort((a, b) => a.distance - b.distance);
 		}
@@ -203,13 +194,25 @@ function setupForm() {
 		closestButton.textContent = "Calcul en cours...";
 
 		try {
-			const closest = globalClosestCashPoints[0];
-			await calculateAndShowItinerary(
-				closest.feature.geometry.coordinates,
-				closest.feature,
-			);
+			
+			// Is the cash point open ?
+			let atLeastOneOpen = false;
+			for(cashPoint of globalClosestCashPoints){
+				if(cashPoint.feature.properties.type === "atm"
+					|| isOpenCashPoint(cashPoint.feature.properties.opening_hours)){
+					atLeastOneOpen = true;
+					await calculateAndShowItinerary(
+						cashPoint.feature.geometry.coordinates,
+						cashPoint.feature,
+					);
+				}
+			}
+			if(!atLeastOneOpen){
+				throw "Erreur : Aucun distributeur proche n'est ouvert."
+			}
+
 		} catch (error) {
-			console.error("Erreur lors du calcul de l'itinéraire:", error);
+			console.error("Erreur lors du calcul de l'itinéraire : ", error);
 			alert("Impossible de calculer l'itinéraire");
 		} finally {
 			closestButton.disabled = false;
@@ -277,26 +280,14 @@ function setupForm() {
 	const radiusSlider = document.getElementById("selected_radius");
 	if (radiusSlider) {
 		radiusSlider.addEventListener("change", () => {
-			if (!globalFreeMode) {
-				setTimeout(() => searchATMs(destinationSearch.value), 600);
-			}
-		});
-	}
-
-	// Mettre à jour quand on change de mode
-	const modeSwitch = document.getElementById("mode");
-	if (modeSwitch) {
-		modeSwitch.addEventListener("click", () => {
-			setTimeout(() => searchATMs(destinationSearch.value), 300);
+			setTimeout(() => searchATMs(destinationSearch.value), 600);
 		});
 	}
 
 	// Mettre à jour après le mouvement de la carte (mode normal uniquement)
 	if (globalMap) {
 		globalMap.on("moveend", () => {
-			if (!globalFreeMode) {
-				setTimeout(() => searchATMs(destinationSearch.value), 200);
-			}
+			setTimeout(() => searchATMs(destinationSearch.value), 200);
 		});
 	}
 }
