@@ -11,7 +11,7 @@ function convertIpToNumber(ip) {
 }
 
 async function fetchUserIp() {
-  const response = await fetch("https://api.ipify.org?format=json");
+  const response = await fetch("/ip");
   if (!response.ok) {
     console.warn("Erreur lors de la récupération de l'adresse IP");
     return null;
