@@ -3,4 +3,8 @@ services:
     build: .
     volumes:
       - /home/home/osm-france-roads.geojson:/app/scripts/sources/osm-france-roads.geojson:ro
+      - preprocessing-cache:/app/scripts/results
     restart: unless-stopped
+
+volumes:
+  preprocessing-cache:
