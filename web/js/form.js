@@ -70,20 +70,20 @@ async function showItinerary(feature) {
 	const stepsList = document.getElementById("itinerary-steps");
 	stepsList.innerHTML = "";
 
+	const icons = {
+		straight: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6L12 2L16 6"/><path d="M12 2V22"/></svg>',
+		right: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>',
+		left: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20v-7a4 4 0 0 0-4-4H4"/><path d="M9 14 4 9l5-5"/></svg>'
+	};
+
 	itinerary[1].forEach((step) => {
 		const li = document.createElement("li");
-		const nameSpan = document.createElement("span");
-		const distanceSpan = document.createElement("span");
+		const icon = icons[step.direction] || icons.straight;
+		const distance = step.distance >= CONSTANTS.DISTANCE_THRESHOLDS.KM_THRESHOLD
+			? `${roundToTwoDecimals(step.distance / 1000)}km`
+			: `${roundToInteger(step.distance)}m`;
 
-		nameSpan.textContent = step.road;
-		if (step.distance >= CONSTANTS.DISTANCE_THRESHOLDS.KM_THRESHOLD) {
-			distanceSpan.textContent = `${roundToTwoDecimals(step.distance / 1000)}km`;
-		} else {
-			distanceSpan.textContent = `${roundToInteger(step.distance)}m`;
-		}
-
-		li.appendChild(nameSpan);
-		li.appendChild(distanceSpan);
+		li.innerHTML = `<span class="itinerary-icon">${icon}</span><span class="itinerary-road-name">${step.road}</span><span class="itinerary-distance">${distance}</span>`;
 		stepsList.appendChild(li);
 	});
 

@@ -163,41 +163,61 @@ function defineTotalDistanceItinerary(roadsItinerary) {
 	return totalDistance;
 }
 
+// Calcule l'azimut entre deux points et retourne la direction du virage
+function getTurnDirection(before, at, after, nodes) {
+	if (!before || !after) return null;
+
+	const [c1, c2, c3] = [nodes[before][0], nodes[at][0], nodes[after][0]];
+	const toRad = x => x * Math.PI / 180;
+
+	const bearing = (from, to) => {
+		const [dLng, lat1, lat2] = [toRad(to[1] - from[1]), toRad(from[0]), toRad(to[0])];
+		return Math.atan2(Math.sin(dLng) * Math.cos(lat2),
+			Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng)) * 180 / Math.PI;
+	};
+
+	let angle = bearing(c2, c3) - bearing(c1, c2);
+	while (angle > 180) angle -= 360;
+	while (angle < -180) angle += 360;
+
+	return angle > 30 ? "right" : angle < -30 ? "left" : "straight";
+}
+
 function buildRoadsRecap(pathIndexes, roadsGraph) {
 	const recap = [];
 	let currentRoad = null;
 	let currentDistance = 0;
+	let turnIndex = 0;
 
 	for (let i = 0; i < pathIndexes.length - 1; i++) {
-		const from = pathIndexes[i];
-		const to = pathIndexes[i + 1];
-
-		const [, neighbors] = roadsGraph.nodes[from];
-		const edge = neighbors.find(([neighborIndex]) => neighborIndex === to);
+		const [, neighbors] = roadsGraph.nodes[pathIndexes[i]];
+		const edge = neighbors.find(([n]) => n === pathIndexes[i + 1]);
 		if (!edge) continue;
 
-		const [, cost, roadNameIndex] = edge;
-		const roadName = roadsGraph.roadNames[roadNameIndex];
+		const roadName = roadsGraph.roadNames[edge[2]];
 
 		if (roadName !== currentRoad) {
 			if (currentRoad) {
-				recap.push({
-					road: currentRoad,
-					distance: Math.round(currentDistance),
-				});
+				let direction = null;
+				if (recap.length > 0 && turnIndex > 0) {
+					direction = getTurnDirection(pathIndexes[turnIndex - 1], pathIndexes[turnIndex], pathIndexes[turnIndex + 1], roadsGraph.nodes);
+				}
+				recap.push({ road: currentRoad, distance: Math.round(currentDistance), direction });
 			}
+			turnIndex = i;
 			currentRoad = roadName;
-			currentDistance = cost;
+			currentDistance = edge[1];
 		} else {
-			currentDistance += cost;
+			currentDistance += edge[1];
 		}
 	}
 
 	if (currentRoad) {
-		recap.push({
-			road: currentRoad,
-			distance: Math.round(currentDistance),
-		});
+		let direction = null;
+		if (recap.length > 0 && turnIndex > 0 && pathIndexes[turnIndex + 1]) {
+			direction = getTurnDirection(pathIndexes[turnIndex - 1], pathIndexes[turnIndex], pathIndexes[turnIndex + 1], roadsGraph.nodes);
+		}
+		recap.push({ road: currentRoad, distance: Math.round(currentDistance), direction });
 	}
 
 	return recap;
