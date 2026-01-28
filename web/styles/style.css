@@ -502,10 +502,11 @@ select {
 
 .bank-info-label {
 	font-weight: 600;
-	width: 95px;
 	flex-shrink: 0;
+	white-space: nowrap;
 	color: #555;
 	font-size: 0.85rem;
+	margin-right: 0.5rem;
 }
 
 .bank-info-value {
@@ -741,7 +742,6 @@ select {
 
 .destination-details .bank-info-label {
 	font-size: 0.8125rem;
-	width: 85px;
 }
 
 .destination-location {
