@@ -211,53 +211,7 @@ function addEventOnPoint(feature) {
 		itineraryBtn.innerHTML = '<span class="btn-spinner"></span>Calcul en cours...';
 
 		try {
-			globalItineraryTarget = feature.geometry.coordinates;
-			updateDestinationMarker(feature);
-			const itinerary = await itineraryCalcul(
-				globalUserPosition,
-				globalItineraryTarget,
-			);
-
-			if (feature._layer) {
-				feature._layer.closePopup();
-			}
-
-			// Displaying the itinerary
-			document.getElementById("sidebar").style.display = "none";
-			document.getElementById("itinerary-sidebar").style.display = "flex";
-
-			// Displaying total distance
-			const totalDistance = document.getElementById("itinerary-total-distance");
-			totalDistance.innerHTML = "";
-			if (itinerary[0] >= CONSTANTS.DISTANCE_THRESHOLDS.KM_THRESHOLD) {
-				totalDistance.textContent = `${roundToTwoDecimals(itinerary[0] / 1000)}km`;
-			} else {
-				totalDistance.textContent = `${roundToInteger(itinerary[0])}m`;
-			}
-
-			// Displaying each roads informations
-			const stepsList = document.getElementById("itinerary-steps");
-			stepsList.innerHTML = "";
-
-			itinerary[1].forEach((step) => {
-				const li = document.createElement("li");
-
-				const distanceSpan = document.createElement("span");
-				const nameSpan = document.createElement("span");
-
-				nameSpan.textContent = `${step.road}`;
-				const roadDistances = step.distance;
-				if (roadDistances >= CONSTANTS.DISTANCE_THRESHOLDS.KM_THRESHOLD) {
-					distanceSpan.textContent = `${roundToTwoDecimals(roadDistances / 1000)}km`;
-				} else {
-					distanceSpan.textContent = `${roundToInteger(roadDistances)}m`;
-				}
-
-				li.appendChild(nameSpan);
-				li.appendChild(distanceSpan);
-
-				stepsList.appendChild(li);
-			});
+			await showItinerary(feature);
 		} catch (error) {
 			console.error("Erreur lors du calcul de l'itinéraire:", error);
 			alert("Impossible de calculer l'itinéraire");
