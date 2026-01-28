@@ -18,75 +18,81 @@
 </head>
 
 <body>
-	<div id="map"></div>
+	<main id="map" role="application" aria-label="Carte interactive des distributeurs"></main>
 
-	<div id="map-loader" class="map-loader">
-		<div class="map-loader-content">
+	<figure id="map-loader" class="map-loader" role="status" aria-live="polite">
+		<figcaption class="map-loader-content">
 			<svg class="map-loader-spinner" xmlns="http://www.w3.org/2000/svg" width="32" height="32"
 				viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-				stroke-linejoin="round">
+				stroke-linejoin="round" aria-hidden="true">
 				<path d="M21 12a9 9 0 1 1-6.219-8.56" />
 			</svg>
 			<span>Chargement des distributeurs...</span>
-		</div>
-	</div>
+		</figcaption>
+	</figure>
 
 	<aside class="sidebar" id="sidebar">
 		<header>
 			<h1>Où est la thune ?</h1>
 		</header>
-		<section class="search-section">
+		<section class="search-section" aria-label="Recherche de distributeurs">
 			<form>
-				<div class="form-group">
-					<label>Point de départ</label>
-					<div id="start-point" class="start-point-display">
+				<fieldset class="form-group">
+					<legend class="visually-hidden">Départ et destination</legend>
+					<label id="start-point-label">Point de départ</label>
+					<output id="start-point" class="start-point-display" aria-labelledby="start-point-label">
 						Ma position actuelle
-					</div>
-				</div>
-				<div class="form-group">
+					</output>
+				</fieldset>
+				<fieldset class="form-group">
+					<legend class="visually-hidden">Recherche de destination</legend>
 					<label for="destination-search">Choisir une destination</label>
-					<div class="destination-wrapper">
-						<input type="text" id="destination-search" placeholder="Rechercher un distributeur..." />
+					<search class="destination-wrapper">
+						<input type="search" id="destination-search" placeholder="Rechercher un distributeur..."
+							autocomplete="off" />
 						<button type="submit" class="btn-go" aria-label="Lancer l'itinéraire">
 							<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
 								fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-								stroke-linejoin="round">
+								stroke-linejoin="round" aria-hidden="true">
 								<path d="M5 12h14" />
 								<path d="m12 5 7 7-7 7" />
 							</svg>
 						</button>
-					</div>
-					<select id="destination-select" size="5">
+					</search>
+					<select id="destination-select" size="5" aria-label="Résultats de recherche">
 						<option value="">Aucun résultat</option>
 					</select>
-				</div>
+				</fieldset>
 
-				<div class="divider" role="presentation"></div>
+				<hr class="divider" />
 
 				<button type="button" id="btn-closest" class="btn-primary">
 					Aller au distributeur le plus proche
 				</button>
-				<div class="radius-control">
+
+				<fieldset class="radius-control">
+					<legend class="visually-hidden">Paramètres du rayon de recherche</legend>
 					<div class="radius-label-wrapper">
 						<label for="selected_radius">Ajuster le rayon :</label>
 						<div class="radius-value-wrapper">
 							<svg id="radius-loader" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
 								viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-								stroke-linecap="round" stroke-linejoin="round" class="radius-loader hidden">
+								stroke-linecap="round" stroke-linejoin="round" class="radius-loader hidden"
+								aria-hidden="true" role="status">
 								<path d="M21 12a9 9 0 1 1-6.219-8.56" />
 							</svg>
-							<span id="radius-value" class="radius-value">2km</span>
+							<output id="radius-value" class="radius-value" for="selected_radius">2km</output>
 						</div>
 					</div>
 					<input type="range" id="selected_radius" class="radius-slider" min="500" max="5000" step="100"
-						value="2000" />
-					<div class="radius-markers">
+						value="2000" aria-valuemin="500" aria-valuemax="5000" aria-valuenow="2000" />
+					<div class="radius-markers" aria-hidden="true">
 						<span>500m</span>
 						<span>5km</span>
 					</div>
-				</div>
+				</fieldset>
 
-				<div class="divider" role="presentation"></div>
+				<hr class="divider" />
 			</form>
 		</section>
 
@@ -96,40 +102,34 @@
 			</div>
 
 			<ul class="card-list">
-				<li>
-					<article class="card">
-						<div class="card-left">
-							<div class="bank-info">
-								<h3 class="bank-name"></h3>
-								<span class="bank-city"></span>
-							</div>
-							<div class="distance-badge"></div>
+				<li class="card">
+					<div class="card-left">
+						<div class="bank-info">
+							<h3 class="bank-name"></h3>
+							<span class="bank-city"></span>
 						</div>
-					</article>
+						<div class="distance-badge"></div>
+					</div>
 				</li>
 
-				<li>
-					<article class="card">
-						<div class="card-left">
-							<div class="bank-info">
-								<h3 class="bank-name"></h3>
-								<span class="bank-city"></span>
-							</div>
-							<div class="distance-badge"></div>
+				<li class="card">
+					<div class="card-left">
+						<div class="bank-info">
+							<h3 class="bank-name"></h3>
+							<span class="bank-city"></span>
 						</div>
-					</article>
+						<div class="distance-badge"></div>
+					</div>
 				</li>
 
-				<li>
-					<article class="card">
-						<div class="card-left">
-							<div class="bank-info">
-								<h3 class="bank-name"></h3>
-								<span class="bank-city"></span>
-							</div>
-							<div class="distance-badge"></div>
+				<li class="card">
+					<div class="card-left">
+						<div class="bank-info">
+							<h3 class="bank-name"></h3>
+							<span class="bank-city"></span>
 						</div>
-					</article>
+						<div class="distance-badge"></div>
+					</div>
 				</li>
 			</ul>
 		</section>
@@ -140,42 +140,38 @@
 			<h1>Votre itinéraire</h1>
 		</header>
 
-		<section class="destination-info">
+		<section class="destination-info" aria-label="Informations sur la destination">
 			<article class="card destination-card">
-				<div class="destination-header">
-					<div class="bank-info">
+				<header class="destination-header">
+					<hgroup class="bank-info">
 						<h3 class="bank-name" id="destination-name">-</h3>
-						<span class="bank-city" id="destination-type">-</span>
-					</div>
-				</div>
-				<div class="destination-details">
-					<span class="destination-location" id="destination-location"></span>
-					<div class="bank-info-row" id="destination-operator-row">
-						<span class="bank-info-label">Opérateur :</span>
-						<span class="bank-info-value" id="destination-operator">-</span>
-					</div>
-					<div class="bank-info-row" id="destination-accessibility-row">
-						<span class="bank-info-label">Accessibilité :</span>
-						<span class="bank-info-value" id="destination-accessibility">-</span>
-					</div>
-				</div>
-				<div class="destination-hours" id="destination-hours"></div>
+						<p class="bank-city" id="destination-type">-</p>
+					</hgroup>
+				</header>
+				<dl class="destination-details">
+					<dt class="visually-hidden">Localisation</dt>
+					<dd class="destination-location" id="destination-location"></dd>
+					<dt class="bank-info-label" id="destination-operator-row">Opérateur :</dt>
+					<dd class="bank-info-value" id="destination-operator">-</dd>
+					<dt class="bank-info-label" id="destination-accessibility-row">Accessibilité :</dt>
+					<dd class="bank-info-value" id="destination-accessibility">-</dd>
+				</dl>
+				<aside class="destination-hours" id="destination-hours" aria-label="Horaires d'ouverture"></aside>
 			</article>
 		</section>
 
-		<section class="itinerary-section">
-
+		<section class="itinerary-section" aria-label="Détails de l'itinéraire">
 			<article class="card">
-				<div class="card-left">
+				<dl class="card-left">
 					<div class="bank-info">
-						<h3>Distance totale</h3>
-						<span id="itinerary-total-distance">-</span>
+						<dt>Distance totale</dt>
+						<dd id="itinerary-total-distance">-</dd>
 					</div>
-				</div>
+				</dl>
 			</article>
 
 			<article class="card">
-				<ul class="itinerary-steps" id="itinerary-steps" aria-label="Étapes de l'itinéraire"></ul>
+				<ol class="itinerary-steps" id="itinerary-steps" aria-label="Étapes de l'itinéraire"></ol>
 			</article>
 
 			<button type="button" class="btn-primary" id="btn-stop-itinerary">
@@ -185,9 +181,10 @@
 	</aside>
 
 
-	<aside class="controls">
+	<nav class="controls" aria-label="Contrôles de la carte">
 		<div class="controls-top">
-			<button id="open-credits" class="background icon" aria-label="Ouvrir le menu" title="Ouvrir le menu">
+			<button id="open-credits" class="background icon" aria-label="Ouvrir les crédits"
+				title="Ouvrir les crédits">
 				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
 					stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
 					aria-hidden="true">
@@ -229,7 +226,7 @@
 				</button>
 			</div>
 		</div>
-	</aside>
+	</nav>
 
 	<dialog id="credits-modal">
 		<header class="modal-header">
@@ -242,11 +239,12 @@
 				</svg>
 			</button>
 		</header>
-		<section class="modal-body">
-			<div class="credits-section">
+		<article class="modal-body">
+			<section class="credits-section">
 				<h3>
 					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-						stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+						aria-hidden="true">
 						<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
 						<circle cx="12" cy="10" r="3"></circle>
 					</svg>
@@ -265,14 +263,15 @@
 					<a href="https://www.openstreetmap.org/" target="_blank"
 						rel="noopener noreferrer">OpenStreetMap</a>.
 				</p>
-			</div>
+			</section>
 
 			<div class="section-divider"></div>
 
-			<div class="credits-section">
+			<section class="credits-section">
 				<h3>
 					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-						stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+						aria-hidden="true">
 						<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
 						<circle cx="9" cy="7" r="4"></circle>
 						<path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -283,7 +282,7 @@
 				<ul class="developers-list">
 					<li class="developer-item">
 						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-							fill="currentColor">
+							fill="currentColor" aria-hidden="true">
 							<path
 								d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
 						</svg>
@@ -292,7 +291,7 @@
 					</li>
 					<li class="developer-item">
 						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-							fill="currentColor">
+							fill="currentColor" aria-hidden="true">
 							<path
 								d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
 						</svg>
@@ -300,8 +299,8 @@
 							Gueroult</a>
 					</li>
 				</ul>
-			</div>
-		</section>
+			</section>
+		</article>
 	</dialog>
 </body>
 

@@ -336,12 +336,16 @@ async function showItinerary(feature) {
 	locationEl.style.display = locationParts.length ? "block" : "none";
 
 	const operatorRow = document.getElementById("destination-operator-row");
-	document.getElementById("destination-operator").textContent = p.operator || "-";
-	operatorRow.style.display = p.operator ? "flex" : "none";
+	const operatorValue = document.getElementById("destination-operator");
+	operatorValue.textContent = p.operator || "-";
+	operatorRow.style.display = p.operator ? "" : "none";
+	operatorValue.style.display = p.operator ? "" : "none";
 
 	const accessRow = document.getElementById("destination-accessibility-row");
-	document.getElementById("destination-accessibility").textContent = translateAccessibility(p.wheelchair);
-	accessRow.style.display = p.wheelchair ? "flex" : "none";
+	const accessValue = document.getElementById("destination-accessibility");
+	accessValue.textContent = translateAccessibility(p.wheelchair);
+	accessRow.style.display = p.wheelchair ? "" : "none";
+	accessValue.style.display = p.wheelchair ? "" : "none";
 
 	const hoursEl = document.getElementById("destination-hours");
 	const openingHours = p.opening_hours || (p.type === "atm" ? "24/7" : null);
