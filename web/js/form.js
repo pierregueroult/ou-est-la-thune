@@ -2,138 +2,16 @@ let searchTimeout = null;
 let startPointDisplay = null;
 let destinationSelect = null;
 
-async function showItinerary(feature) {
-	const targetCoords = feature.geometry.coordinates;
-
-	globalItineraryTarget = targetCoords;
-	updateDestinationMarker(feature);
-
-	const itinerary = await itineraryCalcul(globalUserPosition, targetCoords);
-
-	document.getElementById("sidebar").style.display = "none";
-	document.getElementById("itinerary-sidebar").style.display = "flex";
-
-	// Mise à jour des informations du distributeur de destination
-	const p = feature.properties;
-	document.getElementById("destination-name").textContent = p.brand || p.name || "Distributeur";
-	document.getElementById("destination-type").textContent = p.type === "atm" ? "Distributeur Automatique" : "Banque";
-
-	// Lieu (sans label)
-	const locationEl = document.getElementById("destination-location");
-	const locationParts = [p.meta_name_com, p.meta_name_dep].filter(Boolean);
-	if (locationParts.length > 0) {
-		locationEl.style.display = "block";
-		locationEl.textContent = locationParts.join(", ");
-	} else {
-		locationEl.style.display = "none";
-	}
-
-	// Opérateur
-	const operatorRow = document.getElementById("destination-operator-row");
-	const operatorValue = document.getElementById("destination-operator");
-	if (p.operator) {
-		operatorRow.style.display = "flex";
-		operatorValue.textContent = p.operator;
-	} else {
-		operatorRow.style.display = "none";
-	}
-
-	// Accessibilité
-	const accessibilityRow = document.getElementById("destination-accessibility-row");
-	const accessibilityValue = document.getElementById("destination-accessibility");
-	if (p.wheelchair) {
-		accessibilityRow.style.display = "flex";
-		const accessMap = { yes: "Oui", limited: "Partiel", no: "Non" };
-		accessibilityValue.textContent = accessMap[p.wheelchair.toLowerCase()] || p.wheelchair;
-	} else {
-		accessibilityRow.style.display = "none";
-	}
-
-	// Horaires d'ouverture
-	const hoursEl = document.getElementById("destination-hours");
-	let openingHours = p.opening_hours;
-	if (!openingHours && p.type === "atm") openingHours = "24/7";
-	if (openingHours) {
-		hoursEl.innerHTML = getOpeningHoursHTML(openingHours);
-		hoursEl.style.display = "block";
-	} else {
-		hoursEl.style.display = "none";
-	}
-
-	const totalDistance = document.getElementById("itinerary-total-distance");
-	if (itinerary[0] >= CONSTANTS.DISTANCE_THRESHOLDS.KM_THRESHOLD) {
-		totalDistance.textContent = `${roundToTwoDecimals(itinerary[0] / 1000)}km`;
-	} else {
-		totalDistance.textContent = `${roundToInteger(itinerary[0])}m`;
-	}
-
-	const stepsList = document.getElementById("itinerary-steps");
-	stepsList.innerHTML = "";
-
-	const icons = {
-		straight: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6L12 2L16 6"/><path d="M12 2V22"/></svg>',
-		right: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>',
-		left: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20v-7a4 4 0 0 0-4-4H4"/><path d="M9 14 4 9l5-5"/></svg>'
-	};
-
-	itinerary[1].forEach((step) => {
-		const li = document.createElement("li");
-		const icon = icons[step.direction] || icons.straight;
-		const distance = step.distance >= CONSTANTS.DISTANCE_THRESHOLDS.KM_THRESHOLD
-			? `${roundToTwoDecimals(step.distance / 1000)}km`
-			: `${roundToInteger(step.distance)}m`;
-
-		li.innerHTML = `<span class="itinerary-icon">${icon}</span><span class="itinerary-road-name">${step.road}</span><span class="itinerary-distance">${distance}</span>`;
-		stepsList.appendChild(li);
-	});
-
-	// Ferme la popup après l'affichage de l'itinéraire
-	if (feature._layer) {
-		feature._layer.closePopup();
-	}
-
-	return itinerary;
-}
-
-function updateStartPointDisplay() {
-	if (globalUserPosition) {
-		const [lat, lng] = globalUserPosition;
-		startPointDisplay.textContent = `Ma position (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-	}
-}
-
-function getAvailableATMs() {
-	const atms = [];
-
-	if (!globalGeoLayer) return atms;
-
-	globalGeoLayer.eachLayer((layer) => {
-		if (layer.feature && layer.feature.geometry) {
-			atms.push({
-				feature: layer.feature,
-				coords: layer.feature.geometry.coordinates,
-			});
-		}
-	});
-
-	return atms;
-}
-
 function isOpenCashPoint(openingHours) {
 	if (!openingHours) return false;
-	if (openingHours === "24/7" || openingHours === "Mo-Su 00:00-24:00")
-		return true;
+	if (openingHours === "24/7" || openingHours === "Mo-Su 00:00-24:00") return true;
 
 	const now = new Date();
 	const days = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 	const today = days[now.getDay()];
 	const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-	// Normalise les virgules entre segments en point-virgules
-	const normalized = openingHours.replace(
-		/([0-9:]+|off)\s*,\s*(Mo|Tu|We|Th|Fr|Sa|Su|PH)/g,
-		"$1; $2",
-	);
+	const normalized = openingHours.replace(/([0-9:]+|off)\s*,\s*(Mo|Tu|We|Th|Fr|Sa|Su|PH)/g, "$1; $2");
 
 	for (const segment of normalized.split(";")) {
 		const part = segment.trim();
@@ -145,10 +23,7 @@ function isOpenCashPoint(openingHours) {
 		const dayExpr = part.slice(0, spaceIdx);
 		const timeExpr = part.slice(spaceIdx + 1);
 
-		// Vérifie si aujourd'hui est inclus dans l'expression des jours
 		if (!matchesDay(dayExpr, today, days)) continue;
-
-		// Vérifie si l'heure actuelle est dans les plages horaires
 		if (matchesTime(timeExpr, nowMinutes)) return true;
 	}
 
@@ -165,11 +40,9 @@ function matchesDay(expr, today, days) {
 			const endIdx = days.indexOf(end);
 			if (startIdx === -1 || endIdx === -1) continue;
 
-			// Gère les ranges normales (Mo-Fr) et circulaires (Fr-Mo)
-			const inRange =
-				startIdx <= endIdx
-					? todayIdx >= startIdx && todayIdx <= endIdx
-					: todayIdx >= startIdx || todayIdx <= endIdx;
+			const inRange = startIdx <= endIdx
+				? todayIdx >= startIdx && todayIdx <= endIdx
+				: todayIdx >= startIdx || todayIdx <= endIdx;
 
 			if (inRange) return true;
 		} else if (part === today) {
@@ -192,14 +65,33 @@ function matchesTime(expr, nowMinutes) {
 		const startMin = toMin(start);
 		const endMin = toMin(end);
 
-		if (startMin !== null && endMin !== null) {
-			if (nowMinutes >= startMin && nowMinutes <= endMin) return true;
+		if (startMin !== null && endMin !== null && nowMinutes >= startMin && nowMinutes <= endMin) {
+			return true;
 		}
 	}
 	return false;
 }
 
-// Recherche et mise à jour des résultats
+function updateStartPointDisplay() {
+	if (globalUserPosition) {
+		const [lat, lng] = globalUserPosition;
+		startPointDisplay.textContent = `Ma position (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+	}
+}
+
+function getAvailableATMs() {
+	const atms = [];
+	if (!globalGeoLayer) return atms;
+
+	globalGeoLayer.eachLayer((layer) => {
+		if (layer.feature?.geometry) {
+			atms.push({ feature: layer.feature, coords: layer.feature.geometry.coordinates });
+		}
+	});
+
+	return atms;
+}
+
 function searchATMs(searchTerm) {
 	clearTimeout(searchTimeout);
 
@@ -207,34 +99,20 @@ function searchATMs(searchTerm) {
 		const atms = getAvailableATMs();
 		const lowerSearch = searchTerm.toLowerCase().trim();
 
-		// Filtrer selon la recherche
 		let results = atms.filter((atm) => {
 			const props = atm.feature.properties;
-			const brand = (props.brand || "").toLowerCase();
-			const operator = (props.operator || "").toLowerCase();
-			const city = (props.meta_name_com || "").toLowerCase();
-			const name = (props.name || "").toLowerCase();
-
-			return (
-				!lowerSearch ||
-				brand.includes(lowerSearch) ||
-				operator.includes(lowerSearch) ||
-				city.includes(lowerSearch) ||
-				name.includes(lowerSearch)
-			);
+			const searchFields = [props.brand, props.operator, props.meta_name_com, props.name]
+				.filter(Boolean)
+				.map(s => s.toLowerCase());
+			return !lowerSearch || searchFields.some(f => f.includes(lowerSearch));
 		});
 
-		// Trier par distance si beaucoup de résultats
 		if (results.length > 10) {
 			results = results
-				.map((atm) => ({
-					...atm,
-					distance: distanceMeters(atm.coords, globalUserPosition),
-				}))
+				.map((atm) => ({ ...atm, distance: distanceMeters(atm.coords, globalUserPosition) }))
 				.sort((a, b) => a.distance - b.distance);
 		}
 
-		// Vider le select
 		if (!destinationSelect) return;
 		destinationSelect.innerHTML = "";
 
@@ -247,14 +125,12 @@ function searchATMs(searchTerm) {
 			return;
 		}
 
-		// Ajouter les 10 premiers résultats
 		const displayLimit = 10;
 		const toDisplay = results.slice(0, displayLimit);
 
 		toDisplay.forEach((atm, index) => {
 			const props = atm.feature.properties;
-			const brand =
-				props.brand || props.operator || props.name || "Distributeur";
+			const brand = props.brand || props.operator || props.name || "Distributeur";
 			const city = props.meta_name_com || "";
 			const type = props.type === "atm" ? "DAB" : "Banque";
 
@@ -265,18 +141,16 @@ function searchATMs(searchTerm) {
 			destinationSelect.appendChild(option);
 		});
 
-		// Stocker les résultats pour référence
 		destinationSelect._resultsCache = results;
 
-		// Afficher le nombre de résultats restants
 		if (results.length > displayLimit) {
 			const option = document.createElement("option");
 			option.value = "";
-			option.textContent = `... ${results.length - displayLimit} autres résultats (affinez votre recherche)`;
+			option.textContent = `... ${results.length - displayLimit} autres résultats`;
 			option.disabled = true;
 			destinationSelect.appendChild(option);
 		}
-	}, 300); // Debounce de 300ms
+	}, 300);
 }
 
 function setupForm() {
@@ -289,46 +163,29 @@ function setupForm() {
 
 	let selectedCoords = null;
 
-	// Fonction réutilisable pour calculer l'itinéraire et ouvrir la popup
-
-	// Événement sur le champ de recherche
 	destinationSearch.addEventListener("input", (e) => {
 		const value = e.target.value;
-		if (value.trim()) {
-			destinationSelect.style.display = "block";
-			searchATMs(value);
-		} else {
-			destinationSelect.style.display = "none";
-		}
+		destinationSelect.style.display = value.trim() ? "block" : "none";
+		if (value.trim()) searchATMs(value);
 	});
 
-	// Cacher quand on clique ailleurs
 	document.addEventListener("click", (e) => {
-		if (
-			!destinationSearch.contains(e.target) &&
-			!destinationSelect.contains(e.target)
-		) {
+		if (!destinationSearch.contains(e.target) && !destinationSelect.contains(e.target)) {
 			destinationSelect.style.display = "none";
 		}
 	});
 
-	// Sélection d'un résultat
 	destinationSelect.addEventListener("change", (e) => {
 		const option = e.target.selectedOptions[0];
-		if (option && option.value) {
+		if (option?.value) {
 			selectedCoords = JSON.parse(option.value);
 			destinationSearch.value = option.textContent;
 			destinationSelect.style.display = "none";
 		}
 	});
 
-	// Bouton "Le distributeur le plus proche"
 	closestButton.addEventListener("click", async () => {
-		if (
-			!globalUserPosition ||
-			!globalClosestCashPoints ||
-			globalClosestCashPoints.length === 0
-		) {
+		if (!globalUserPosition || !globalClosestCashPoints?.length) {
 			alert("Aucun distributeur trouvé à proximité");
 			return;
 		}
@@ -338,29 +195,16 @@ function setupForm() {
 		closestButton.textContent = "Calcul en cours...";
 
 		try {
-			// Trouver le premier distributeur ouvert parmi les plus proches
-			let openCashPoint = null;
+			const openCashPoint = globalClosestCashPoints.find((cp) => {
+				const isATM = cp.feature.properties.type === "atm";
+				return isATM || isOpenCashPoint(cp.feature.properties.opening_hours);
+			});
 
-			for (const cashPoint of globalClosestCashPoints) {
-				// Les ATM sont considérés comme toujours ouverts (24/7)
-				const isATM = cashPoint.feature.properties.type === "atm";
-				const isOpen = isOpenCashPoint(
-					cashPoint.feature.properties.opening_hours,
-				);
-
-				if (isATM || isOpen) {
-					openCashPoint = cashPoint;
-					break; // Prendre le premier ouvert (le plus proche)
-				}
-			}
-
-			if (!openCashPoint) {
-				throw new Error("Aucun distributeur proche n'est ouvert actuellement.");
-			}
+			if (!openCashPoint) throw new Error("Aucun distributeur proche n'est ouvert.");
 
 			await showItinerary(openCashPoint.feature);
 		} catch (error) {
-			console.error("Erreur lors du calcul de l'itinéraire : ", error);
+			console.error("Erreur lors du calcul de l'itinéraire:", error);
 			alert("Impossible de calculer l'itinéraire");
 		} finally {
 			closestButton.disabled = false;
@@ -368,7 +212,6 @@ function setupForm() {
 		}
 	});
 
-	// Soumission du formulaire (destination manuelle)
 	form.addEventListener("submit", async (e) => {
 		e.preventDefault();
 
@@ -376,7 +219,6 @@ function setupForm() {
 			alert("Veuillez sélectionner une destination");
 			return;
 		}
-
 		if (!globalUserPosition) {
 			alert("Position utilisateur non disponible");
 			return;
@@ -385,25 +227,14 @@ function setupForm() {
 		submitButton.disabled = true;
 
 		try {
-			// Trouver la feature pour ouvrir la popup
-			let feature = null;
 			const selectedOption = destinationSelect.selectedOptions[0];
-			if (
-				selectedOption &&
-				selectedOption.dataset.index &&
-				destinationSelect._resultsCache
-			) {
-				const index = parseInt(selectedOption.dataset.index);
-				const atm = destinationSelect._resultsCache[index];
-				if (atm && atm.feature) {
-					feature = atm.feature;
+			if (selectedOption?.dataset.index && destinationSelect._resultsCache) {
+				const atm = destinationSelect._resultsCache[parseInt(selectedOption.dataset.index)];
+				if (atm?.feature) {
+					await showItinerary(atm.feature);
+				} else {
+					alert("Impossible de trouver le distributeur sélectionné");
 				}
-			}
-
-			if (feature) {
-				await showItinerary(feature);
-			} else {
-				alert("Impossible de trouver le distributeur sélectionné");
 			}
 		} catch (error) {
 			console.error("Erreur lors du calcul de l'itinéraire:", error);
@@ -413,33 +244,21 @@ function setupForm() {
 		}
 	});
 
-	// Initialisation
 	updateStartPointDisplay();
 	destinationSelect.style.display = "none";
 
-	// Mettre à jour quand la position change
-	const locateButton = document.getElementById("locate");
-	if (locateButton) {
-		locateButton.addEventListener("click", () => {
-			setTimeout(() => {
-				updateStartPointDisplay();
-				searchATMs(destinationSearch.value);
-			}, 800);
-		});
-	}
+	document.getElementById("locate")?.addEventListener("click", () => {
+		setTimeout(() => {
+			updateStartPointDisplay();
+			searchATMs(destinationSearch.value);
+		}, 800);
+	});
 
-	// Mettre à jour quand le rayon change (mode normal)
-	const radiusSlider = document.getElementById("selected_radius");
-	if (radiusSlider) {
-		radiusSlider.addEventListener("change", () => {
-			setTimeout(() => searchATMs(destinationSearch.value), 600);
-		});
-	}
+	document.getElementById("selected_radius")?.addEventListener("change", () => {
+		setTimeout(() => searchATMs(destinationSearch.value), 600);
+	});
 
-	// Mettre à jour après le mouvement de la carte (mode normal uniquement)
-	if (globalMap) {
-		globalMap.on("moveend", () => {
-			setTimeout(() => searchATMs(destinationSearch.value), 200);
-		});
-	}
+	globalMap?.on("moveend", () => {
+		setTimeout(() => searchATMs(destinationSearch.value), 200);
+	});
 }
