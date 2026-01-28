@@ -2,21 +2,99 @@ let searchTimeout = null;
 let startPointDisplay = null;
 let destinationSelect = null;
 
-async function calculateAndShowItinerary(targetCoords, feature = null) {
-	itineraryLayer = await itineraryCalcul(
-		globalUserPosition,
-		targetCoords,
-		globalMap,
-	);
+async function showItinerary(feature) {
+	const targetCoords = feature.geometry.coordinates;
 
-	if (feature && feature._layer) {
-		setTimeout(() => {
-			feature._layer.openPopup();
-		}, 600);
+	globalItineraryTarget = targetCoords;
+	updateDestinationMarker(feature);
+
+	const itinerary = await itineraryCalcul(globalUserPosition, targetCoords);
+
+	document.getElementById("sidebar").style.display = "none";
+	document.getElementById("itinerary-sidebar").style.display = "flex";
+
+	// Mise à jour des informations du distributeur de destination
+	const p = feature.properties;
+	document.getElementById("destination-name").textContent = p.brand || p.name || "Distributeur";
+	document.getElementById("destination-type").textContent = p.type === "atm" ? "Distributeur Automatique" : "Banque";
+
+	// Lieu (sans label)
+	const locationEl = document.getElementById("destination-location");
+	const locationParts = [p.meta_name_com, p.meta_name_dep].filter(Boolean);
+	if (locationParts.length > 0) {
+		locationEl.style.display = "block";
+		locationEl.textContent = locationParts.join(", ");
+	} else {
+		locationEl.style.display = "none";
 	}
+
+	// Opérateur
+	const operatorRow = document.getElementById("destination-operator-row");
+	const operatorValue = document.getElementById("destination-operator");
+	if (p.operator) {
+		operatorRow.style.display = "flex";
+		operatorValue.textContent = p.operator;
+	} else {
+		operatorRow.style.display = "none";
+	}
+
+	// Accessibilité
+	const accessibilityRow = document.getElementById("destination-accessibility-row");
+	const accessibilityValue = document.getElementById("destination-accessibility");
+	if (p.wheelchair) {
+		accessibilityRow.style.display = "flex";
+		const accessMap = { yes: "Oui", limited: "Partiel", no: "Non" };
+		accessibilityValue.textContent = accessMap[p.wheelchair.toLowerCase()] || p.wheelchair;
+	} else {
+		accessibilityRow.style.display = "none";
+	}
+
+	// Horaires d'ouverture
+	const hoursEl = document.getElementById("destination-hours");
+	let openingHours = p.opening_hours;
+	if (!openingHours && p.type === "atm") openingHours = "24/7";
+	if (openingHours) {
+		hoursEl.innerHTML = getOpeningHoursHTML(openingHours);
+		hoursEl.style.display = "block";
+	} else {
+		hoursEl.style.display = "none";
+	}
+
+	const totalDistance = document.getElementById("itinerary-total-distance");
+	if (itinerary[0] >= CONSTANTS.DISTANCE_THRESHOLDS.KM_THRESHOLD) {
+		totalDistance.textContent = `${roundToTwoDecimals(itinerary[0] / 1000)}km`;
+	} else {
+		totalDistance.textContent = `${roundToInteger(itinerary[0])}m`;
+	}
+
+	const stepsList = document.getElementById("itinerary-steps");
+	stepsList.innerHTML = "";
+
+	itinerary[1].forEach((step) => {
+		const li = document.createElement("li");
+		const nameSpan = document.createElement("span");
+		const distanceSpan = document.createElement("span");
+
+		nameSpan.textContent = step.road;
+		if (step.distance >= CONSTANTS.DISTANCE_THRESHOLDS.KM_THRESHOLD) {
+			distanceSpan.textContent = `${roundToTwoDecimals(step.distance / 1000)}km`;
+		} else {
+			distanceSpan.textContent = `${roundToInteger(step.distance)}m`;
+		}
+
+		li.appendChild(nameSpan);
+		li.appendChild(distanceSpan);
+		stepsList.appendChild(li);
+	});
+
+	// Ferme la popup après l'affichage de l'itinéraire
+	if (feature._layer) {
+		feature._layer.closePopup();
+	}
+
+	return itinerary;
 }
 
-// Mise à jour de l'affichage de la position de départ
 function updateStartPointDisplay() {
 	if (globalUserPosition) {
 		const [lat, lng] = globalUserPosition;
@@ -24,7 +102,6 @@ function updateStartPointDisplay() {
 	}
 }
 
-// Récupérer tous les distributeurs disponibles
 function getAvailableATMs() {
 	const atms = [];
 
@@ -42,17 +119,84 @@ function getAvailableATMs() {
 	return atms;
 }
 
-// TODO
 function isOpenCashPoint(openingHours) {
-
 	if (!openingHours) return false;
-	if (openingHours === "24/7") return true;
+	if (openingHours === "24/7" || openingHours === "Mo-Su 00:00-24:00")
+		return true;
 
-	const currentDate = new Date();
-	const currentDay = now.getDay(); // 0 = Dim, 1 = Lun, 6 = Sam
-	const currentMinutes = now.getHours() * 60 + now.getMinutes();
+	const now = new Date();
+	const days = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+	const today = days[now.getDay()];
+	const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-	return true;
+	// Normalise les virgules entre segments en point-virgules
+	const normalized = openingHours.replace(
+		/([0-9:]+|off)\s*,\s*(Mo|Tu|We|Th|Fr|Sa|Su|PH)/g,
+		"$1; $2",
+	);
+
+	for (const segment of normalized.split(";")) {
+		const part = segment.trim();
+		if (!part || part.includes("off")) continue;
+
+		const spaceIdx = part.indexOf(" ");
+		if (spaceIdx === -1) continue;
+
+		const dayExpr = part.slice(0, spaceIdx);
+		const timeExpr = part.slice(spaceIdx + 1);
+
+		// Vérifie si aujourd'hui est inclus dans l'expression des jours
+		if (!matchesDay(dayExpr, today, days)) continue;
+
+		// Vérifie si l'heure actuelle est dans les plages horaires
+		if (matchesTime(timeExpr, nowMinutes)) return true;
+	}
+
+	return false;
+}
+
+function matchesDay(expr, today, days) {
+	const todayIdx = days.indexOf(today);
+
+	for (const part of expr.split(",")) {
+		if (part.includes("-")) {
+			const [start, end] = part.split("-");
+			const startIdx = days.indexOf(start);
+			const endIdx = days.indexOf(end);
+			if (startIdx === -1 || endIdx === -1) continue;
+
+			// Gère les ranges normales (Mo-Fr) et circulaires (Fr-Mo)
+			const inRange =
+				startIdx <= endIdx
+					? todayIdx >= startIdx && todayIdx <= endIdx
+					: todayIdx >= startIdx || todayIdx <= endIdx;
+
+			if (inRange) return true;
+		} else if (part === today) {
+			return true;
+		}
+	}
+	return false;
+}
+
+function matchesTime(expr, nowMinutes) {
+	for (const range of expr.split(",")) {
+		const [start, end] = range.trim().split("-");
+		if (!start || !end) continue;
+
+		const toMin = (s) => {
+			const [h, m] = s.split(":").map(Number);
+			return isNaN(h) || isNaN(m) ? null : h * 60 + m;
+		};
+
+		const startMin = toMin(start);
+		const endMin = toMin(end);
+
+		if (startMin !== null && endMin !== null) {
+			if (nowMinutes >= startMin && nowMinutes <= endMin) return true;
+		}
+	}
+	return false;
 }
 
 // Recherche et mise à jour des résultats
@@ -194,23 +338,27 @@ function setupForm() {
 		closestButton.textContent = "Calcul en cours...";
 
 		try {
-			
-			// Is the cash point open ?
-			let atLeastOneOpen = false;
-			for(cashPoint of globalClosestCashPoints){
-				if(cashPoint.feature.properties.type === "atm"
-					|| isOpenCashPoint(cashPoint.feature.properties.opening_hours)){
-					atLeastOneOpen = true;
-					await calculateAndShowItinerary(
-						cashPoint.feature.geometry.coordinates,
-						cashPoint.feature,
-					);
+			// Trouver le premier distributeur ouvert parmi les plus proches
+			let openCashPoint = null;
+
+			for (const cashPoint of globalClosestCashPoints) {
+				// Les ATM sont considérés comme toujours ouverts (24/7)
+				const isATM = cashPoint.feature.properties.type === "atm";
+				const isOpen = isOpenCashPoint(
+					cashPoint.feature.properties.opening_hours,
+				);
+
+				if (isATM || isOpen) {
+					openCashPoint = cashPoint;
+					break; // Prendre le premier ouvert (le plus proche)
 				}
 			}
-			if(!atLeastOneOpen){
-				throw "Erreur : Aucun distributeur proche n'est ouvert."
+
+			if (!openCashPoint) {
+				throw new Error("Aucun distributeur proche n'est ouvert actuellement.");
 			}
 
+			await showItinerary(openCashPoint.feature);
 		} catch (error) {
 			console.error("Erreur lors du calcul de l'itinéraire : ", error);
 			alert("Impossible de calculer l'itinéraire");
@@ -237,7 +385,7 @@ function setupForm() {
 		submitButton.disabled = true;
 
 		try {
-			// Trouver la feature pour ouvrir la popup si elle existe
+			// Trouver la feature pour ouvrir la popup
 			let feature = null;
 			const selectedOption = destinationSelect.selectedOptions[0];
 			if (
@@ -252,7 +400,11 @@ function setupForm() {
 				}
 			}
 
-			await calculateAndShowItinerary(selectedCoords, feature);
+			if (feature) {
+				await showItinerary(feature);
+			} else {
+				alert("Impossible de trouver le distributeur sélectionné");
+			}
 		} catch (error) {
 			console.error("Erreur lors du calcul de l'itinéraire:", error);
 			alert("Impossible de calculer l'itinéraire");
