@@ -447,14 +447,8 @@ function startPositionAutoUpdate() {
 				printClosestCashPoints(globalClosestCashPoints);
 
 				if (globalItineraryTarget) {
-					if (globalItineraryLayer) {
-						globalMap.removeLayer(globalItineraryLayer);
-						globalItineraryLayer = null;
-					}
-					globalItineraryLayer = await itineraryCalcul(
-						newPosition,
-						globalItineraryTarget,
-					);
+					// itineraryCalcul already handles removing the old layer and updating globalItineraryLayer
+					await itineraryCalcul(newPosition, globalItineraryTarget);
 				}
 			}
 		} catch (error) {
