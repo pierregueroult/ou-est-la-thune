@@ -186,6 +186,8 @@ search.destination-wrapper {
 	height: 1px;
 	width: 100%;
 	background: var(--border);
+	border: none;
+	margin: 0;
 }
 
 .radius-control {
