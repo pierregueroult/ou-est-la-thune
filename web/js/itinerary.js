@@ -297,6 +297,35 @@ function mergeGraphs(graph1, graph2) {
 	};
 }
 
+// Get all departments crossed by a straight line between two points
+function getDepartmentsAlongLine(start, end, outlinesDep, numSamples = 20) {
+	const depStart = getDepartmentFromCoords(start, outlinesDep);
+	const depEnd = getDepartmentFromCoords(end, outlinesDep);
+
+	if (depStart && depStart === depEnd) {
+		return [depStart];
+	}
+
+	const departments = new Set();
+	if (depStart) departments.add(depStart);
+	if (depEnd) departments.add(depEnd);
+
+	for (let i = 1; i < numSamples; i++) {
+		const t = i / numSamples;
+		const point = [
+			start[0] + t * (end[0] - start[0]),
+			start[1] + t * (end[1] - start[1])
+		];
+
+		const dep = getDepartmentFromCoords(point, outlinesDep);
+		if (dep) {
+			departments.add(dep);
+		}
+	}
+
+	return Array.from(departments);
+}
+
 async function itineraryCalcul(userPosition, positionToReach) {
 
 	// Remove previous itinerary
@@ -304,16 +333,21 @@ async function itineraryCalcul(userPosition, positionToReach) {
 		globalMap.removeLayer(globalItineraryLayer);
 	}
 
-	// Determine which departments are needed
 	const outlinesDep = await fetchOutlinesDepartmentsData();
-	const depUser = getDepartmentFromCoords(userPosition, outlinesDep);
-	const depDestination = getDepartmentFromCoords(positionToReach, outlinesDep);
+	const departments = getDepartmentsAlongLine(userPosition, positionToReach, outlinesDep);
 
-	// Load road graph(s)
-	let roadsGraph = await fetchRoadsGraph(depUser);
-	if (depUser !== depDestination) {
-		const secondGraph = await fetchRoadsGraph(depDestination);
-		roadsGraph = mergeGraphs(roadsGraph, secondGraph);
+	let roadsGraph = null;
+	for (const dep of departments) {
+		try {
+			const graph = await fetchRoadsGraph(dep);
+			if (!roadsGraph) {
+				roadsGraph = graph;
+			} else {
+				roadsGraph = mergeGraphs(roadsGraph, graph);
+			}
+		} catch (e) {
+			console.warn(`Could not load graph for department ${dep}:`, e);
+		}
 	}
 
 	// Find closest nodes in graph for start and destination
