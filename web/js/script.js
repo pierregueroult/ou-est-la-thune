@@ -577,41 +577,74 @@ function setupMapEvents() {
 	globalMap.whenReady(setupForm);
 }
 
+function showMapLoader() {
+	const loader = document.getElementById("map-loader");
+	if (loader) loader.classList.remove("hidden");
+}
+
+function hideMapLoader() {
+	const loader = document.getElementById("map-loader");
+	if (loader) loader.classList.add("hidden");
+}
+
 window.onload = async () => {
 	globalRadiusMeters = document.getElementById("selected_radius").value;
 
+	// Étape 1 : Créer immédiatement la carte avec les tuiles (sans données)
 	const tiles = createTileLayer();
-	globalData = await fetchGeoData();
+
+	// Obtenir la position utilisateur d'abord pour centrer la carte
 	globalUserPosition = await getLocation();
 
+	// Créer la carte immédiatement avec la position utilisateur
 	globalMap = createMap(globalUserPosition, tiles);
-	globalGeoLayer = createGeoLayer(
-		globalData,
-		globalUserPosition,
-		globalRadiusMeters,
-	);
-	globalGeoLayer.addTo(globalMap);
 
+	// Ajouter le cercle et le marker utilisateur immédiatement
 	globalCircle = createCircle(globalUserPosition, globalRadiusMeters);
 	globalCircle.addTo(globalMap);
 
 	globalUserMarker = createUserMarker(globalUserPosition);
 	globalUserMarker.addTo(globalMap);
 
-	globalClosestCashPoints = defineClosestCashPoints(
-		globalData,
-		globalUserPosition,
-	);
-	printClosestCashPoints(globalClosestCashPoints);
-
+	// Setup des contrôles de base (zoom, localisation, modal)
 	setupLocateButton();
 	setupZoomControls();
-	setupRadiusControl();
-	setupClickOnClosestCashPoints(globalClosestCashPoints);
-	setupMapEvents();
 	setupCreditsModal();
 	setupItineraryEvent();
-	startPositionAutoUpdate();
+
+	// Afficher le loader pendant le chargement des données
+	showMapLoader();
+
+	// Étape 2 : Charger les données des banques en arrière-plan
+	try {
+		globalData = await fetchGeoData();
+
+		// Créer et ajouter le layer des POI
+		globalGeoLayer = createGeoLayer(
+			globalData,
+			globalUserPosition,
+			globalRadiusMeters,
+		);
+		globalGeoLayer.addTo(globalMap);
+
+		// Calculer et afficher les points les plus proches
+		globalClosestCashPoints = defineClosestCashPoints(
+			globalData,
+			globalUserPosition,
+		);
+		printClosestCashPoints(globalClosestCashPoints);
+
+		// Setup des fonctionnalités dépendantes des données
+		setupRadiusControl();
+		setupClickOnClosestCashPoints(globalClosestCashPoints);
+		setupMapEvents();
+		startPositionAutoUpdate();
+	} catch (error) {
+		console.error("Erreur lors du chargement des données:", error);
+	} finally {
+		// Masquer le loader une fois les données chargées
+		hideMapLoader();
+	}
 };
 
 function setupCreditsModal() {
