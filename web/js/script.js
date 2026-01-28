@@ -213,11 +213,14 @@ function addEventOnPoint(feature) {
 		try {
 			globalItineraryTarget = feature.geometry.coordinates;
 			updateDestinationMarker(feature);
-
 			const itinerary = await itineraryCalcul(
 				globalUserPosition,
 				globalItineraryTarget,
 			);
+
+			if (feature._layer) {
+				feature._layer.closePopup();
+			}
 
 			// Displaying the itinerary
 			document.getElementById("sidebar").style.display = "none";
@@ -336,10 +339,6 @@ function createUserMarker(userPosition) {
 function updateDestinationMarker(feature) {
 	if (globalDestinationMarker) {
 		globalMap.removeLayer(globalDestinationMarker);
-	}
-
-	if (feature._layer) {
-		feature._layer.closePopup();
 	}
 
 	const [lng, lat] = feature.geometry.coordinates;
