@@ -13,6 +13,53 @@ async function showItinerary(feature) {
 	document.getElementById("sidebar").style.display = "none";
 	document.getElementById("itinerary-sidebar").style.display = "flex";
 
+	// Mise à jour des informations du distributeur de destination
+	const p = feature.properties;
+	document.getElementById("destination-name").textContent = p.brand || p.name || "Distributeur";
+	document.getElementById("destination-type").textContent = p.type === "atm" ? "Distributeur Automatique" : "Banque";
+
+	// Lieu (sans label)
+	const locationEl = document.getElementById("destination-location");
+	const locationParts = [p.meta_name_com, p.meta_name_dep].filter(Boolean);
+	if (locationParts.length > 0) {
+		locationEl.style.display = "block";
+		locationEl.textContent = locationParts.join(", ");
+	} else {
+		locationEl.style.display = "none";
+	}
+
+	// Opérateur
+	const operatorRow = document.getElementById("destination-operator-row");
+	const operatorValue = document.getElementById("destination-operator");
+	if (p.operator) {
+		operatorRow.style.display = "flex";
+		operatorValue.textContent = p.operator;
+	} else {
+		operatorRow.style.display = "none";
+	}
+
+	// Accessibilité
+	const accessibilityRow = document.getElementById("destination-accessibility-row");
+	const accessibilityValue = document.getElementById("destination-accessibility");
+	if (p.wheelchair) {
+		accessibilityRow.style.display = "flex";
+		const accessMap = { yes: "Oui", limited: "Partiel", no: "Non" };
+		accessibilityValue.textContent = accessMap[p.wheelchair.toLowerCase()] || p.wheelchair;
+	} else {
+		accessibilityRow.style.display = "none";
+	}
+
+	// Horaires d'ouverture
+	const hoursEl = document.getElementById("destination-hours");
+	let openingHours = p.opening_hours;
+	if (!openingHours && p.type === "atm") openingHours = "24/7";
+	if (openingHours) {
+		hoursEl.innerHTML = getOpeningHoursHTML(openingHours);
+		hoursEl.style.display = "block";
+	} else {
+		hoursEl.style.display = "none";
+	}
+
 	const totalDistance = document.getElementById("itinerary-total-distance");
 	if (itinerary[0] >= CONSTANTS.DISTANCE_THRESHOLDS.KM_THRESHOLD) {
 		totalDistance.textContent = `${roundToTwoDecimals(itinerary[0] / 1000)}km`;

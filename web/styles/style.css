@@ -82,6 +82,7 @@ select {
 	display: flex;
 	flex-direction: column;
 	gap: 1.25rem;
+	overflow-y: auto;
 }
 
 .sidebar header {
@@ -699,6 +700,66 @@ select {
 
 #itinerary-sidebar {
 	display: none;
+}
+
+.destination-info {
+	display: flex;
+	flex-direction: column;
+}
+
+.destination-card {
+	cursor: default;
+}
+
+.destination-card:hover {
+	box-shadow: var(--shadow);
+	border-color: transparent;
+}
+
+.destination-header {
+	margin-bottom: 0.75rem;
+	padding-bottom: 0.75rem;
+	border-bottom: 1px solid var(--border);
+}
+
+.destination-header .bank-name {
+	font-size: 1rem;
+	color: var(--primary);
+}
+
+.destination-header .bank-city {
+	text-transform: uppercase;
+	font-size: 0.75rem;
+	font-weight: 600;
+	letter-spacing: 0.025em;
+}
+
+.destination-details .bank-info-row {
+	margin-bottom: 0.25rem;
+	font-size: 0.8125rem;
+}
+
+.destination-details .bank-info-label {
+	font-size: 0.8125rem;
+	width: 85px;
+}
+
+.destination-location {
+	display: block;
+	font-size: 0.8125rem;
+	color: var(--muted);
+	margin-bottom: 0.5rem;
+}
+
+.destination-hours {
+	margin-top: 0.75rem;
+	padding-top: 0.75rem;
+	border-top: 1px solid var(--border);
+}
+
+.destination-hours .hours-table {
+	margin-top: 0;
+	font-size: 0.8125rem;
 }
 
 .itinerary-section {
