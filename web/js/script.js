@@ -149,9 +149,18 @@ function printClosestCashPoints(closestCashPoints) {
 		const cityEl = card.querySelector(".bank-city");
 		const badgeEl = card.querySelector(".distance-badge");
 
-		if (nameEl) nameEl.textContent = feature.properties.brand || "Distributeur";
-		if (cityEl) cityEl.textContent = feature.properties.meta_name_com || "";
-		if (badgeEl) badgeEl.textContent = formatDistance(distance);
+		if (nameEl) {
+			nameEl.textContent = feature.properties.brand || "Distributeur";
+			nameEl.classList.remove("skeleton");
+		}
+		if (cityEl) {
+			cityEl.textContent = feature.properties.meta_name_com || "";
+			cityEl.classList.remove("skeleton");
+		}
+		if (badgeEl) {
+			badgeEl.textContent = formatDistance(distance);
+			badgeEl.classList.remove("skeleton");
+		}
 	}
 }
 

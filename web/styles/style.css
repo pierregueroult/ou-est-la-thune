@@ -978,3 +978,48 @@ nav.controls {
 	font-weight: 500;
 	color: var(--primary);
 }
+
+/* Skeleton Loader Styles */
+@keyframes shimmer {
+	0% {
+		background-position: -200% 0;
+	}
+	100% {
+		background-position: 200% 0;
+	}
+}
+
+.skeleton {
+	background: linear-gradient(
+		90deg,
+		var(--border) 25%,
+		var(--card) 50%,
+		var(--border) 75%
+	);
+	background-size: 200% 100%;
+	animation: shimmer 1.5s infinite;
+	border-radius: var(--radius-sm);
+	color: transparent !important;
+}
+
+.skeleton.bank-name {
+	min-height: 0.9rem;
+	max-width: 60px;
+}
+
+.skeleton.bank-city {
+	min-height: 0.6rem;
+	max-width: 120px;
+}
+
+.skeleton.distance-badge {
+	min-width: 62px;
+	min-height: 27px;
+	background: linear-gradient(
+		90deg,
+		var(--primary) 25%,
+		var(--primary-hover) 50%,
+		var(--primary) 75%
+	);
+	background-size: 200% 100%;
+}
