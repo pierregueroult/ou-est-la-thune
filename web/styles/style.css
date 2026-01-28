@@ -1,6 +1,6 @@
 :root {
-	--bg: #ecf1d4;
-	--bg-hover: #e1eac2;
+	--bg: #FEFBEA;
+	--bg-hover: #FBF3D4;
 	--bg-fg: #000;
 	--primary: #104843;
 	--primary-hover: #1b615a;
@@ -25,24 +25,9 @@ html {
 	line-height: 1.15;
 }
 
-:root {
-	--background: #f5fcf5;
-	--background-hover: #e1eac2;
-	--background-foreground: #000000;
-	--primary: #104843;
-	--primary-hover: #1b615a;
-	--primary-foreground: #ffffff;
-	--card: #ffffff;
-	--card-foreground: #000000;
-	--muted: #6b7280;
-	--border: #e5e7eb;
-	--input-border: #d1d5db;
-	--input-focus: #104843;
-}
-
 body {
 	margin: 0;
-	background: #f5f5f5;
+	background: var(--bg);
 	overflow: hidden;
 }
 
@@ -82,6 +67,7 @@ select {
 	display: flex;
 	flex-direction: column;
 	gap: 1.25rem;
+	overflow-y: auto;
 }
 
 .sidebar header {
@@ -501,10 +487,11 @@ select {
 
 .bank-info-label {
 	font-weight: 600;
-	width: 95px;
 	flex-shrink: 0;
+	white-space: nowrap;
 	color: #555;
 	font-size: 0.85rem;
+	margin-right: 0.5rem;
 }
 
 .bank-info-value {
@@ -701,6 +688,65 @@ select {
 	display: none;
 }
 
+.destination-info {
+	display: flex;
+	flex-direction: column;
+}
+
+.destination-card {
+	cursor: default;
+}
+
+.destination-card:hover {
+	box-shadow: var(--shadow);
+	border-color: transparent;
+}
+
+.destination-header {
+	margin-bottom: 0.75rem;
+	padding-bottom: 0.75rem;
+	border-bottom: 1px solid var(--border);
+}
+
+.destination-header .bank-name {
+	font-size: 1rem;
+	color: var(--primary);
+}
+
+.destination-header .bank-city {
+	text-transform: uppercase;
+	font-size: 0.75rem;
+	font-weight: 600;
+	letter-spacing: 0.025em;
+}
+
+.destination-details .bank-info-row {
+	margin-bottom: 0.25rem;
+	font-size: 0.8125rem;
+}
+
+.destination-details .bank-info-label {
+	font-size: 0.8125rem;
+}
+
+.destination-location {
+	display: block;
+	font-size: 0.8125rem;
+	color: var(--muted);
+	margin-bottom: 0.5rem;
+}
+
+.destination-hours {
+	margin-top: 0.75rem;
+	padding-top: 0.75rem;
+	border-top: 1px solid var(--border);
+}
+
+.destination-hours .hours-table {
+	margin-top: 0;
+	font-size: 0.8125rem;
+}
+
 .itinerary-section {
 	display: flex;
 	flex-direction: column;
@@ -764,46 +810,41 @@ select {
 
 .itinerary-steps li {
 	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
+	align-items: center;
 	gap: 0.75rem;
 	padding: 0.75rem 0;
 	border-bottom: 1px solid var(--border);
-	position: relative;
 }
 
 .itinerary-steps li:last-child {
 	border-bottom: none;
 }
 
-.itinerary-steps li::before {
-	content: counter(step);
-	counter-increment: step;
+.itinerary-steps li .itinerary-icon {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 1.5rem;
-	height: 1.5rem;
-	min-width: 1.5rem;
+	width: 2rem;
+	height: 2rem;
+	min-width: 2rem;
 	background-color: var(--primary);
-	color: var(--primary-foreground);
+	color: white;
 	border-radius: 50%;
-	font-size: 0.75rem;
-	font-weight: 600;
 }
 
-.itinerary-steps {
-	counter-reset: step;
+.itinerary-steps li .itinerary-icon svg {
+	width: 1.25rem;
+	height: 1.25rem;
 }
 
-.itinerary-steps li span:first-child {
+.itinerary-steps li .itinerary-road-name {
 	flex: 1;
 	font-size: 0.875rem;
 	color: var(--card-foreground);
 	line-height: 1.4;
 }
 
-.itinerary-steps li span:last-child {
+.itinerary-steps li .itinerary-distance {
 	font-size: 0.8125rem;
 	font-weight: 600;
 	color: var(--primary);
@@ -847,4 +888,43 @@ select {
 	100% {
 		box-shadow: 0 0 0 0 rgba(16, 72, 67, 0);
 	}
+}
+
+.map-loader {
+	position: fixed;
+	inset: 0;
+	z-index: 500;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(255, 255, 255, 0.8);
+	backdrop-filter: blur(4px);
+	transition: opacity 0.3s ease;
+}
+
+.map-loader.hidden {
+	opacity: 0;
+	pointer-events: none;
+}
+
+.map-loader-content {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 1rem;
+	padding: 1.5rem 2rem;
+	background: var(--card);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow-lg);
+}
+
+.map-loader-spinner {
+	color: var(--primary);
+	animation: spin 0.8s linear infinite;
+}
+
+.map-loader-content span {
+	font-size: 0.9375rem;
+	font-weight: 500;
+	color: var(--primary);
 }

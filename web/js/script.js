@@ -211,50 +211,7 @@ function addEventOnPoint(feature) {
 		itineraryBtn.innerHTML = '<span class="btn-spinner"></span>Calcul en cours...';
 
 		try {
-			globalItineraryTarget = feature.geometry.coordinates;
-			updateDestinationMarker(feature);
-
-			const itinerary = await itineraryCalcul(
-				globalUserPosition,
-				globalItineraryTarget,
-			);
-
-			// Displaying the itinerary
-			document.getElementById("sidebar").style.display = "none";
-			document.getElementById("itinerary-sidebar").style.display = "flex";
-
-			// Displaying total distance
-			const totalDistance = document.getElementById("itinerary-total-distance");
-			totalDistance.innerHTML = "";
-			if (itinerary[0] >= CONSTANTS.DISTANCE_THRESHOLDS.KM_THRESHOLD) {
-				totalDistance.textContent = `${roundToTwoDecimals(itinerary[0] / 1000)}km`;
-			} else {
-				totalDistance.textContent = `${roundToInteger(itinerary[0])}m`;
-			}
-
-			// Displaying each roads informations
-			const stepsList = document.getElementById("itinerary-steps");
-			stepsList.innerHTML = "";
-
-			itinerary[1].forEach((step) => {
-				const li = document.createElement("li");
-
-				const distanceSpan = document.createElement("span");
-				const nameSpan = document.createElement("span");
-
-				nameSpan.textContent = `${step.road}`;
-				const roadDistances = step.distance;
-				if (roadDistances >= CONSTANTS.DISTANCE_THRESHOLDS.KM_THRESHOLD) {
-					distanceSpan.textContent = `${roundToTwoDecimals(roadDistances / 1000)}km`;
-				} else {
-					distanceSpan.textContent = `${roundToInteger(roadDistances)}m`;
-				}
-
-				li.appendChild(nameSpan);
-				li.appendChild(distanceSpan);
-
-				stepsList.appendChild(li);
-			});
+			await showItinerary(feature);
 		} catch (error) {
 			console.error("Erreur lors du calcul de l'itinéraire:", error);
 			alert("Impossible de calculer l'itinéraire");
@@ -336,10 +293,6 @@ function createUserMarker(userPosition) {
 function updateDestinationMarker(feature) {
 	if (globalDestinationMarker) {
 		globalMap.removeLayer(globalDestinationMarker);
-	}
-
-	if (feature._layer) {
-		feature._layer.closePopup();
 	}
 
 	const [lng, lat] = feature.geometry.coordinates;
@@ -494,14 +447,8 @@ function startPositionAutoUpdate() {
 				printClosestCashPoints(globalClosestCashPoints);
 
 				if (globalItineraryTarget) {
-					if (globalItineraryLayer) {
-						globalMap.removeLayer(globalItineraryLayer);
-						globalItineraryLayer = null;
-					}
-					globalItineraryLayer = await itineraryCalcul(
-						newPosition,
-						globalItineraryTarget,
-					);
+					// itineraryCalcul already handles removing the old layer and updating globalItineraryLayer
+					await itineraryCalcul(newPosition, globalItineraryTarget);
 				}
 			}
 		} catch (error) {
@@ -630,41 +577,74 @@ function setupMapEvents() {
 	globalMap.whenReady(setupForm);
 }
 
+function showMapLoader() {
+	const loader = document.getElementById("map-loader");
+	if (loader) loader.classList.remove("hidden");
+}
+
+function hideMapLoader() {
+	const loader = document.getElementById("map-loader");
+	if (loader) loader.classList.add("hidden");
+}
+
 window.onload = async () => {
 	globalRadiusMeters = document.getElementById("selected_radius").value;
 
+	// Étape 1 : Créer immédiatement la carte avec les tuiles (sans données)
 	const tiles = createTileLayer();
-	globalData = await fetchGeoData();
+
+	// Obtenir la position utilisateur d'abord pour centrer la carte
 	globalUserPosition = await getLocation();
 
+	// Créer la carte immédiatement avec la position utilisateur
 	globalMap = createMap(globalUserPosition, tiles);
-	globalGeoLayer = createGeoLayer(
-		globalData,
-		globalUserPosition,
-		globalRadiusMeters,
-	);
-	globalGeoLayer.addTo(globalMap);
 
+	// Ajouter le cercle et le marker utilisateur immédiatement
 	globalCircle = createCircle(globalUserPosition, globalRadiusMeters);
 	globalCircle.addTo(globalMap);
 
 	globalUserMarker = createUserMarker(globalUserPosition);
 	globalUserMarker.addTo(globalMap);
 
-	globalClosestCashPoints = defineClosestCashPoints(
-		globalData,
-		globalUserPosition,
-	);
-	printClosestCashPoints(globalClosestCashPoints);
-
+	// Setup des contrôles de base (zoom, localisation, modal)
 	setupLocateButton();
 	setupZoomControls();
-	setupRadiusControl();
-	setupClickOnClosestCashPoints(globalClosestCashPoints);
-	setupMapEvents();
 	setupCreditsModal();
 	setupItineraryEvent();
-	startPositionAutoUpdate();
+
+	// Afficher le loader pendant le chargement des données
+	showMapLoader();
+
+	// Étape 2 : Charger les données des banques en arrière-plan
+	try {
+		globalData = await fetchGeoData();
+
+		// Créer et ajouter le layer des POI
+		globalGeoLayer = createGeoLayer(
+			globalData,
+			globalUserPosition,
+			globalRadiusMeters,
+		);
+		globalGeoLayer.addTo(globalMap);
+
+		// Calculer et afficher les points les plus proches
+		globalClosestCashPoints = defineClosestCashPoints(
+			globalData,
+			globalUserPosition,
+		);
+		printClosestCashPoints(globalClosestCashPoints);
+
+		// Setup des fonctionnalités dépendantes des données
+		setupRadiusControl();
+		setupClickOnClosestCashPoints(globalClosestCashPoints);
+		setupMapEvents();
+		startPositionAutoUpdate();
+	} catch (error) {
+		console.error("Erreur lors du chargement des données:", error);
+	} finally {
+		// Masquer le loader une fois les données chargées
+		hideMapLoader();
+	}
 };
 
 function setupCreditsModal() {

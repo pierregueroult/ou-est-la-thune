@@ -1,438 +1,306 @@
 <!doctype html>
 <html lang="fr">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Où est la thune ?</title>
-		<link rel="stylesheet" href="./assets/leaflet/leaflet.css" />
-		<script src="./assets/leaflet/leaflet.js"></script>
-		<link
-			rel="icon"
-			type="image/png"
-			href="./assets/images/marker-user.png"
-		/>
-		<link rel="stylesheet" href="./styles/style.css" />
-		<meta name="robots" content="noindex, nofollow" />
-	</head>
-	<body>
-		<div id="map"></div>
 
-		<aside class="sidebar" id="sidebar">
-			<header>
-				<h1>Où est la thune ?</h1>
-			</header>
-			<section class="search-section">
-				<form>
-					<div class="form-group">
-						<label>Point de départ</label>
-						<div id="start-point" class="start-point-display">
-							Ma position actuelle
-						</div>
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Où est la thune ?</title>
+	<link rel="stylesheet" href="./assets/leaflet/leaflet.css" />
+	<script src="./assets/leaflet/leaflet.js"></script>
+	<link rel="icon" type="image/png" href="./assets/images/marker-user.png" />
+	<link rel="stylesheet" href="./styles/style.css" />
+	<meta name="robots" content="noindex, nofollow" />
+</head>
+
+<body>
+	<div id="map"></div>
+
+	<div id="map-loader" class="map-loader">
+		<div class="map-loader-content">
+			<svg class="map-loader-spinner" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+			</svg>
+			<span>Chargement des distributeurs...</span>
+		</div>
+	</div>
+
+	<aside class="sidebar" id="sidebar">
+		<header>
+			<h1>Où est la thune ?</h1>
+		</header>
+		<section class="search-section">
+			<form>
+				<div class="form-group">
+					<label>Point de départ</label>
+					<div id="start-point" class="start-point-display">
+						Ma position actuelle
 					</div>
-					<div class="form-group">
-						<label for="destination-search">Choisir une destination</label>
-						<div class="destination-wrapper">
-							<input
-								type="text"
-								id="destination-search"
-								placeholder="Rechercher un distributeur..."
-							/>
-							<button
-								type="submit"
-								class="btn-go"
-								aria-label="Lancer l'itinéraire"
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									width="20"
-									height="20"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-								>
-									<path d="M5 12h14" />
-									<path d="m12 5 7 7-7 7" />
-								</svg>
-							</button>
-						</div>
-						<select id="destination-select" size="5">
-							<option value="">Aucun résultat</option>
-						</select>
-					</div>
-
-					<div class="divider" role="presentation"></div>
-
-					<button type="button" id="btn-closest" class="btn-primary">
-						Aller au distributeur le plus proche
-					</button>
-					<div class="radius-control">
-						<div class="radius-label-wrapper">
-							<label for="selected_radius">Ajuster le rayon :</label>
-							<div class="radius-value-wrapper">
-								<svg
-									id="radius-loader"
-									xmlns="http://www.w3.org/2000/svg"
-									width="16"
-									height="16"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									class="radius-loader hidden"
-								>
-									<path d="M21 12a9 9 0 1 1-6.219-8.56" />
-								</svg>
-								<span id="radius-value" class="radius-value">2km</span>
-							</div>
-						</div>
-						<input
-							type="range"
-							id="selected_radius"
-							class="radius-slider"
-							min="500"
-							max="5000"
-							step="100"
-							value="2000"
-						/>
-						<div class="radius-markers">
-							<span>500m</span>
-							<span>5km</span>
-						</div>
-					</div>
-
-					<div class="divider" role="presentation"></div>
-				</form>
-			</section>
-
-			<section class="results-section" aria-labelledby="results-heading">
-				<div class="section-header">
-					<h2 id="results-heading">Les plus proches de vous :</h2>
 				</div>
-
-				<ul class="card-list">
-					<li>
-						<article class="card">
-							<div class="card-left">
-								<div class="bank-info">
-									<h3 class="bank-name"></h3>
-									<span class="bank-city"></span>
-								</div>
-								<div class="distance-badge"></div>
-							</div>
-						</article>
-					</li>
-
-					<li>
-						<article class="card">
-							<div class="card-left">
-								<div class="bank-info">
-									<h3 class="bank-name"></h3>
-									<span class="bank-city"></span>
-								</div>
-								<div class="distance-badge"></div>
-							</div>
-						</article>
-					</li>
-
-					<li>
-						<article class="card">
-							<div class="card-left">
-								<div class="bank-info">
-									<h3 class="bank-name"></h3>
-									<span class="bank-city"></span>
-								</div>
-								<div class="distance-badge"></div>
-							</div>
-						</article>
-					</li>
-				</ul>
-			</section>
-		</aside>
-
-		<aside class="sidebar" id="itinerary-sidebar">
-			<header>
-				<h1>Votre itinéraire</h1>
-			</header>
-
-			<section class="itinerary-section">
-
-				<article class="card">
-					<div class="card-left">
-						<div class="bank-info">
-							<h3>Distance totale</h3>
-							<span id="itinerary-total-distance">-</span>
-						</div>
+				<div class="form-group">
+					<label for="destination-search">Choisir une destination</label>
+					<div class="destination-wrapper">
+						<input type="text" id="destination-search" placeholder="Rechercher un distributeur..." />
+						<button type="submit" class="btn-go" aria-label="Lancer l'itinéraire">
+							<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+								fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+								stroke-linejoin="round">
+								<path d="M5 12h14" />
+								<path d="m12 5 7 7-7 7" />
+							</svg>
+						</button>
 					</div>
-				</article>
-
-				<article class="card">
-					<ul
-						class="itinerary-steps"
-						id="itinerary-steps"
-						aria-label="Étapes de l'itinéraire"
-					></ul>
-				</article>
+					<select id="destination-select" size="5">
+						<option value="">Aucun résultat</option>
+					</select>
+				</div>
 
 				<div class="divider" role="presentation"></div>
 
-				<button
-					type="button"
-					class="btn-primary"
-					id="btn-stop-itinerary"
-				>
-					Arrêter l'itinéraire
+				<button type="button" id="btn-closest" class="btn-primary">
+					Aller au distributeur le plus proche
 				</button>
-			</section>
-		</aside>
+				<div class="radius-control">
+					<div class="radius-label-wrapper">
+						<label for="selected_radius">Ajuster le rayon :</label>
+						<div class="radius-value-wrapper">
+							<svg id="radius-loader" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+								viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+								stroke-linecap="round" stroke-linejoin="round" class="radius-loader hidden">
+								<path d="M21 12a9 9 0 1 1-6.219-8.56" />
+							</svg>
+							<span id="radius-value" class="radius-value">2km</span>
+						</div>
+					</div>
+					<input type="range" id="selected_radius" class="radius-slider" min="500" max="5000" step="100"
+						value="2000" />
+					<div class="radius-markers">
+						<span>500m</span>
+						<span>5km</span>
+					</div>
+				</div>
+
+				<div class="divider" role="presentation"></div>
+			</form>
+		</section>
+
+		<section class="results-section" aria-labelledby="results-heading">
+			<div class="section-header">
+				<h2 id="results-heading">Les plus proches de vous :</h2>
+			</div>
+
+			<ul class="card-list">
+				<li>
+					<article class="card">
+						<div class="card-left">
+							<div class="bank-info">
+								<h3 class="bank-name"></h3>
+								<span class="bank-city"></span>
+							</div>
+							<div class="distance-badge"></div>
+						</div>
+					</article>
+				</li>
+
+				<li>
+					<article class="card">
+						<div class="card-left">
+							<div class="bank-info">
+								<h3 class="bank-name"></h3>
+								<span class="bank-city"></span>
+							</div>
+							<div class="distance-badge"></div>
+						</div>
+					</article>
+				</li>
+
+				<li>
+					<article class="card">
+						<div class="card-left">
+							<div class="bank-info">
+								<h3 class="bank-name"></h3>
+								<span class="bank-city"></span>
+							</div>
+							<div class="distance-badge"></div>
+						</div>
+					</article>
+				</li>
+			</ul>
+		</section>
+	</aside>
+
+	<aside class="sidebar" id="itinerary-sidebar">
+		<header>
+			<h1>Votre itinéraire</h1>
+		</header>
+
+		<section class="destination-info">
+			<article class="card destination-card">
+				<div class="destination-header">
+					<div class="bank-info">
+						<h3 class="bank-name" id="destination-name">-</h3>
+						<span class="bank-city" id="destination-type">-</span>
+					</div>
+				</div>
+				<div class="destination-details">
+					<span class="destination-location" id="destination-location"></span>
+					<div class="bank-info-row" id="destination-operator-row">
+						<span class="bank-info-label">Opérateur :</span>
+						<span class="bank-info-value" id="destination-operator">-</span>
+					</div>
+					<div class="bank-info-row" id="destination-accessibility-row">
+						<span class="bank-info-label">Accessibilité :</span>
+						<span class="bank-info-value" id="destination-accessibility">-</span>
+					</div>
+				</div>
+				<div class="destination-hours" id="destination-hours"></div>
+			</article>
+		</section>
+
+		<section class="itinerary-section">
+
+			<article class="card">
+				<div class="card-left">
+					<div class="bank-info">
+						<h3>Distance totale</h3>
+						<span id="itinerary-total-distance">-</span>
+					</div>
+				</div>
+			</article>
+
+			<article class="card">
+				<ul class="itinerary-steps" id="itinerary-steps" aria-label="Étapes de l'itinéraire"></ul>
+			</article>
+
+			<button type="button" class="btn-primary" id="btn-stop-itinerary">
+				Arrêter l'itinéraire
+			</button>
+		</section>
+	</aside>
 
 
-		<aside class="controls">
-			<div class="controls-top">
-				<button
-					id="open-credits"
-					class="background icon"
-					aria-label="Ouvrir le menu"
-					title="Ouvrir le menu"
-				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="24"
-						height="24"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						aria-hidden="true"
-					>
-						<circle cx="12" cy="12" r="1" />
-						<circle cx="12" cy="5" r="1" />
-						<circle cx="12" cy="19" r="1" />
+	<aside class="controls">
+		<div class="controls-top">
+			<button id="open-credits" class="background icon" aria-label="Ouvrir le menu" title="Ouvrir le menu">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+					stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+					aria-hidden="true">
+					<circle cx="12" cy="12" r="1" />
+					<circle cx="12" cy="5" r="1" />
+					<circle cx="12" cy="19" r="1" />
+				</svg>
+			</button>
+		</div>
+
+		<div class="controls-bottom">
+			<button id="locate" class="primary icon" aria-label="Me localiser" title="Me localiser">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+					stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+					aria-hidden="true">
+					<line x1="2" x2="5" y1="12" y2="12" />
+					<line x1="19" x2="22" y1="12" y2="12" />
+					<line x1="12" x2="12" y1="2" y2="5" />
+					<line x1="12" x2="12" y1="19" y2="22" />
+					<circle cx="12" cy="12" r="7" />
+				</svg>
+			</button>
+
+			<div class="controls-zoom" role="group" aria-label="Contrôles de zoom">
+				<button id="zoom-in" class="background icon" aria-label="Zoomer" title="Zoomer">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+						stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+						aria-hidden="true">
+						<path d="M5 12h14" />
+						<path d="M12 5v14" />
+					</svg>
+				</button>
+				<button id="zoom-out" class="background icon" aria-label="Dézoomer" title="Dézoomer">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+						stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+						aria-hidden="true">
+						<path d="M5 12h14" />
 					</svg>
 				</button>
 			</div>
+		</div>
+	</aside>
 
-			<div class="controls-bottom">
-				<button
-					id="locate"
-					class="primary icon"
-					aria-label="Me localiser"
-					title="Me localiser"
-				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="24"
-						height="24"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						aria-hidden="true"
-					>
-						<line x1="2" x2="5" y1="12" y2="12" />
-						<line x1="19" x2="22" y1="12" y2="12" />
-						<line x1="12" x2="12" y1="2" y2="5" />
-						<line x1="12" x2="12" y1="19" y2="22" />
-						<circle cx="12" cy="12" r="7" />
+	<dialog id="credits-modal">
+		<header class="modal-header">
+			<h2>Crédits</h2>
+			<button id="close-credits" class="modal-close" aria-label="Fermer la modal">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+					stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<line x1="18" y1="6" x2="6" y2="18"></line>
+					<line x1="6" y1="6" x2="18" y2="18"></line>
+				</svg>
+			</button>
+		</header>
+		<section class="modal-body">
+			<div class="credits-section">
+				<h3>
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+						stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+						<circle cx="12" cy="10" r="3"></circle>
 					</svg>
-				</button>
-
-				<div class="controls-zoom" role="group" aria-label="Contrôles de zoom">
-					<button
-						id="zoom-in"
-						class="background icon"
-						aria-label="Zoomer"
-						title="Zoomer"
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							width="24"
-							height="24"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							aria-hidden="true"
-						>
-							<path d="M5 12h14" />
-							<path d="M12 5v14" />
-						</svg>
-					</button>
-					<button
-						id="zoom-out"
-						class="background icon"
-						aria-label="Dézoomer"
-						title="Dézoomer"
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							width="24"
-							height="24"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							aria-hidden="true"
-						>
-							<path d="M5 12h14" />
-						</svg>
-					</button>
-				</div>
+					Cartographie
+				</h3>
+				<p>
+					Les cartes sont fournies par
+					<a href="https://leafletjs.com/" target="_blank" rel="noopener noreferrer">Leaflet</a>, une
+					bibliothèque JavaScript open-source pour les cartes
+					interactives.
+				</p>
+				<p>
+					Les tuiles de carte proviennent de
+					<a href="https://carto.com/" target="_blank" rel="noopener noreferrer">CARTO</a>
+					et les données de
+					<a href="https://www.openstreetmap.org/" target="_blank"
+						rel="noopener noreferrer">OpenStreetMap</a>.
+				</p>
 			</div>
-		</aside>
 
-		<dialog id="credits-modal">
-			<header class="modal-header">
-				<h2>Crédits</h2>
-				<button
-					id="close-credits"
-					class="modal-close"
-					aria-label="Fermer la modal"
-				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="24"
-						height="24"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					>
-						<line x1="18" y1="6" x2="6" y2="18"></line>
-						<line x1="6" y1="6" x2="18" y2="18"></line>
+			<div class="section-divider"></div>
+
+			<div class="credits-section">
+				<h3>
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+						stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+						<circle cx="9" cy="7" r="4"></circle>
+						<path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+						<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
 					</svg>
-				</button>
-			</header>
-			<section class="modal-body">
-				<div class="credits-section">
-					<h3>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							width="24"
-							height="24"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						>
-							<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-							<circle cx="12" cy="10" r="3"></circle>
+					Développeurs
+				</h3>
+				<ul class="developers-list">
+					<li class="developer-item">
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+							fill="currentColor">
+							<path
+								d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
 						</svg>
-						Cartographie
-					</h3>
-					<p>
-						Les cartes sont fournies par
-						<a
-							href="https://leafletjs.com/"
-							target="_blank"
-							rel="noopener noreferrer"
-							>Leaflet</a
-						>, une bibliothèque JavaScript open-source pour les cartes
-						interactives.
-					</p>
-					<p>
-						Les tuiles de carte proviennent de
-						<a
-							href="https://carto.com/"
-							target="_blank"
-							rel="noopener noreferrer"
-							>CARTO</a
-						>
-						et les données de
-						<a
-							href="https://www.openstreetmap.org/"
-							target="_blank"
-							rel="noopener noreferrer"
-							>OpenStreetMap</a
-						>.
-					</p>
-				</div>
-
-				<div class="section-divider"></div>
-
-				<div class="credits-section">
-					<h3>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							width="24"
-							height="24"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						>
-							<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-							<circle cx="9" cy="7" r="4"></circle>
-							<path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-							<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+						<a href="https://github.com/Nicolas-Conguisti" target="_blank" rel="noopener noreferrer">Nicolas
+							Conguisti</a>
+					</li>
+					<li class="developer-item">
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+							fill="currentColor">
+							<path
+								d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
 						</svg>
-						Développeurs
-					</h3>
-					<ul class="developers-list">
-						<li class="developer-item">
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								width="24"
-								height="24"
-								viewBox="0 0 24 24"
-								fill="currentColor"
-							>
-								<path
-									d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
-								/>
-							</svg>
-							<a
-								href="https://github.com/Nicolas-Conguisti"
-								target="_blank"
-								rel="noopener noreferrer"
-								>Nicolas Conguisti</a
-							>
-						</li>
-						<li class="developer-item">
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								width="24"
-								height="24"
-								viewBox="0 0 24 24"
-								fill="currentColor"
-							>
-								<path
-									d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
-								/>
-							</svg>
-							<a
-								href="https://github.com/pierregueroult"
-								target="_blank"
-								rel="noopener noreferrer"
-								>Pierre Gueroult</a
-							>
-						</li>
-					</ul>
-				</div>
-			</section>
-		</dialog>
+						<a href="https://github.com/pierregueroult" target="_blank" rel="noopener noreferrer">Pierre
+							Gueroult</a>
+					</li>
+				</ul>
+			</div>
+		</section>
+	</dialog>
 
-		<script src="./js/location.js"></script>
-		<script src="./js/itinerary.js"></script>
-		<script src="./js/form.js"></script>
-		<script src="./js/script.js"></script>
-	</body>
+	<script src="./js/location.js"></script>
+	<script src="./js/itinerary.js"></script>
+	<script src="./js/form.js"></script>
+	<script src="./js/script.js"></script>
+</body>
+
 </html>

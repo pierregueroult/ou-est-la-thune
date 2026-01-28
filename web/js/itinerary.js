@@ -163,41 +163,61 @@ function defineTotalDistanceItinerary(roadsItinerary) {
 	return totalDistance;
 }
 
+// Calcule l'azimut entre deux points et retourne la direction du virage
+function getTurnDirection(before, at, after, nodes) {
+	if (!before || !after) return null;
+
+	const [c1, c2, c3] = [nodes[before][0], nodes[at][0], nodes[after][0]];
+	const toRad = x => x * Math.PI / 180;
+
+	const bearing = (from, to) => {
+		const [dLng, lat1, lat2] = [toRad(to[1] - from[1]), toRad(from[0]), toRad(to[0])];
+		return Math.atan2(Math.sin(dLng) * Math.cos(lat2),
+			Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng)) * 180 / Math.PI;
+	};
+
+	let angle = bearing(c2, c3) - bearing(c1, c2);
+	while (angle > 180) angle -= 360;
+	while (angle < -180) angle += 360;
+
+	return angle > 30 ? "right" : angle < -30 ? "left" : "straight";
+}
+
 function buildRoadsRecap(pathIndexes, roadsGraph) {
 	const recap = [];
 	let currentRoad = null;
 	let currentDistance = 0;
+	let turnIndex = 0;
 
 	for (let i = 0; i < pathIndexes.length - 1; i++) {
-		const from = pathIndexes[i];
-		const to = pathIndexes[i + 1];
-
-		const [, neighbors] = roadsGraph.nodes[from];
-		const edge = neighbors.find(([neighborIndex]) => neighborIndex === to);
+		const [, neighbors] = roadsGraph.nodes[pathIndexes[i]];
+		const edge = neighbors.find(([n]) => n === pathIndexes[i + 1]);
 		if (!edge) continue;
 
-		const [, cost, roadNameIndex] = edge;
-		const roadName = roadsGraph.roadNames[roadNameIndex];
+		const roadName = roadsGraph.roadNames[edge[2]];
 
 		if (roadName !== currentRoad) {
 			if (currentRoad) {
-				recap.push({
-					road: currentRoad,
-					distance: Math.round(currentDistance),
-				});
+				let direction = null;
+				if (recap.length > 0 && turnIndex > 0) {
+					direction = getTurnDirection(pathIndexes[turnIndex - 1], pathIndexes[turnIndex], pathIndexes[turnIndex + 1], roadsGraph.nodes);
+				}
+				recap.push({ road: currentRoad, distance: Math.round(currentDistance), direction });
 			}
+			turnIndex = i;
 			currentRoad = roadName;
-			currentDistance = cost;
+			currentDistance = edge[1];
 		} else {
-			currentDistance += cost;
+			currentDistance += edge[1];
 		}
 	}
 
 	if (currentRoad) {
-		recap.push({
-			road: currentRoad,
-			distance: Math.round(currentDistance),
-		});
+		let direction = null;
+		if (recap.length > 0 && turnIndex > 0 && pathIndexes[turnIndex + 1]) {
+			direction = getTurnDirection(pathIndexes[turnIndex - 1], pathIndexes[turnIndex], pathIndexes[turnIndex + 1], roadsGraph.nodes);
+		}
+		recap.push({ road: currentRoad, distance: Math.round(currentDistance), direction });
 	}
 
 	return recap;
@@ -297,6 +317,35 @@ function mergeGraphs(graph1, graph2) {
 	};
 }
 
+// Get all departments crossed by a straight line between two points
+function getDepartmentsAlongLine(start, end, outlinesDep, numSamples = 20) {
+	const depStart = getDepartmentFromCoords(start, outlinesDep);
+	const depEnd = getDepartmentFromCoords(end, outlinesDep);
+
+	if (depStart && depStart === depEnd) {
+		return [depStart];
+	}
+
+	const departments = new Set();
+	if (depStart) departments.add(depStart);
+	if (depEnd) departments.add(depEnd);
+
+	for (let i = 1; i < numSamples; i++) {
+		const t = i / numSamples;
+		const point = [
+			start[0] + t * (end[0] - start[0]),
+			start[1] + t * (end[1] - start[1])
+		];
+
+		const dep = getDepartmentFromCoords(point, outlinesDep);
+		if (dep) {
+			departments.add(dep);
+		}
+	}
+
+	return Array.from(departments);
+}
+
 async function itineraryCalcul(userPosition, positionToReach) {
 
 	// Remove previous itinerary
@@ -304,16 +353,21 @@ async function itineraryCalcul(userPosition, positionToReach) {
 		globalMap.removeLayer(globalItineraryLayer);
 	}
 
-	// Determine which departments are needed
 	const outlinesDep = await fetchOutlinesDepartmentsData();
-	const depUser = getDepartmentFromCoords(userPosition, outlinesDep);
-	const depDestination = getDepartmentFromCoords(positionToReach, outlinesDep);
+	const departments = getDepartmentsAlongLine(userPosition, positionToReach, outlinesDep);
 
-	// Load road graph(s)
-	let roadsGraph = await fetchRoadsGraph(depUser);
-	if (depUser !== depDestination) {
-		const secondGraph = await fetchRoadsGraph(depDestination);
-		roadsGraph = mergeGraphs(roadsGraph, secondGraph);
+	let roadsGraph = null;
+	for (const dep of departments) {
+		try {
+			const graph = await fetchRoadsGraph(dep);
+			if (!roadsGraph) {
+				roadsGraph = graph;
+			} else {
+				roadsGraph = mergeGraphs(roadsGraph, graph);
+			}
+		} catch (e) {
+			console.warn(`Could not load graph for department ${dep}:`, e);
+		}
 	}
 
 	// Find closest nodes in graph for start and destination
