@@ -244,10 +244,8 @@ function setupClickOnClosestCashPoints(closestCashPoints) {
 				const originalText = badgeEl.textContent;
 				badgeEl.textContent = "...";
 				badgeEl.style.pointerEvents = "none";
-
 				try {
-					await itineraryCalcul(globalUserPosition, feature.geometry.coordinates, globalMap);
-					setTimeout(() => feature._layer?.openPopup(), 600);
+					await showItinerary(feature);
 				} catch (error) {
 					console.error("Erreur lors du calcul de l'itinéraire:", error);
 					alert("Impossible de calculer l'itinéraire");
