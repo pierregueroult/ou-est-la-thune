@@ -195,14 +195,25 @@ function setupForm() {
 		closestButton.textContent = "Calcul en cours...";
 
 		try {
-			const openCashPoint = globalClosestCashPoints.find((cp) => {
-				const isATM = cp.feature.properties.type === "atm";
-				return isATM || isOpenCashPoint(cp.feature.properties.opening_hours);
-			});
+			const atms = getAvailableATMs();
 
-			if (!openCashPoint) throw new Error("Aucun distributeur proche n'est ouvert.");
+			const openCandidates = atms
+				.filter((atm) => {
+					const p = atm.feature.properties;
+					const isATM = p.type === "atm";
+					return isATM || isOpenCashPoint(p.opening_hours);
+				})
+				.map((atm) => ({
+					feature: atm.feature,
+					distance: distanceMeters(atm.coords, globalUserPosition),
+				}))
+				.sort((a, b) => a.distance - b.distance);
 
-			await showItinerary(openCashPoint.feature);
+			const closestOpen = openCandidates[0];
+
+			if (!closestOpen) throw new Error("Aucun distributeur proche n'est ouvert.");
+
+			await showItinerary(closestOpen.feature);
 		} catch (error) {
 			console.error("Erreur lors du calcul de l'itinéraire:", error);
 			alert("Impossible de calculer l'itinéraire");

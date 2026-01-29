@@ -263,35 +263,35 @@ function setupClickOnClosestCashPoints(closestCashPoints) {
 		const card = cards[i];
 		const { feature } = closestCashPoints[i];
 
-		card.addEventListener("click", () => {
+		card.onclick = () => {
 			globalMap.once("moveend", () => feature._layer.openPopup());
 			globalMap.setView(feature.geometry.coordinates, 18);
-		});
+		};
 
 		const badgeEl = card.querySelector(".distance-badge");
 		if (badgeEl) {
-			badgeEl.style.cursor = "pointer";
 			badgeEl.title = "Cliquer pour lancer l'itinéraire";
 
-			badgeEl.addEventListener("click", async (e) => {
+			badgeEl.onclick = async (e) => {
 				e.stopPropagation();
 				const originalText = badgeEl.textContent;
-				badgeEl.textContent = "...";
-				badgeEl.style.pointerEvents = "none";
+				badgeEl.disabled = true;
+				badgeEl.classList.add("loading");
+				badgeEl.innerHTML = '<span class="btn-spinner"></span>Calcul...';
 				setSidebarInputsDisabled(true);
-
+				
 				try {
-					await itineraryCalcul(globalUserPosition, feature.geometry.coordinates, globalMap);
-					setTimeout(() => feature._layer?.openPopup(), 600);
+					await showItinerary(feature);
 				} catch (error) {
 					console.error("Erreur lors du calcul de l'itinéraire:", error);
 					alert("Impossible de calculer l'itinéraire");
 				} finally {
+					badgeEl.disabled = false;
+					badgeEl.classList.remove("loading");
 					badgeEl.textContent = originalText;
-					badgeEl.style.pointerEvents = "auto";
 					setSidebarInputsDisabled(false);
 				}
-			});
+			};
 		}
 	}
 }
@@ -396,8 +396,18 @@ function setupItineraryEvent() {
 	document.getElementById("btn-stop-itinerary").addEventListener("click", async () => {
 		document.getElementById("sidebar").style.display = "flex";
 		document.getElementById("itinerary-sidebar").style.display = "none";
-		globalMap.removeLayer(globalItineraryLayer);
-		globalItineraryLayer = null;
+		
+		if (globalItineraryLayer) {
+			globalMap.removeLayer(globalItineraryLayer);
+			globalItineraryLayer = null;
+		}
+		
+		if (globalDestinationMarker) {
+			globalMap.removeLayer(globalDestinationMarker);
+			globalDestinationMarker = null;
+		}
+
+		globalItineraryTarget = null;
 		await updateUserLocation();
 	});
 }
