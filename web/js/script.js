@@ -20,7 +20,7 @@ function isFeatureVisible(feature, userPosition, radiusMeters) {
 	if (globalFilterOpen) {
 		const p = feature.properties;
 		const hours = p.opening_hours || (p.type === "atm" ? "24/7" : null);
-		if (!isOpenNow(hours)) return false;
+		if (!isOpenCashPoint(hours)) return false;
 	}
 	
 	return true;
