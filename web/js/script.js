@@ -90,7 +90,7 @@ function addEventOnPoint(feature) {
 
 	const infoItems = [
 		{ label: "Opérateur", value: p.operator },
-		{ label: "Accessibilité", value: translateAccessibility(p.wheelchair) },
+		{ label: "Accès handicap", value: translateAccessibility(p.wheelchair) },
 		{ label: "Lieu", value: location || null },
 	].filter(item => item.value);
 
