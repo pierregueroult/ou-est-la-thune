@@ -91,5 +91,72 @@ function getOpeningHoursHTML(openingHoursString) {
         rowsHTML += `<tr><td class="hours-day">${daysPart}</td><td class="hours-time">${hoursPart}</td></tr>`;
     }
 
-    return rowsHTML ? `<table class="hours-table">${rowsHTML}</table>` : "";
+    	return rowsHTML ? `<table class="hours-table">${rowsHTML}</table>` : "";
+}
+
+function isAccessible(feature) {
+	const access = feature.properties.wheelchair;
+	return access === "yes";
+}
+
+function isOpenNow(openingHoursString) {
+	if (!openingHoursString) return false;
+	if (openingHoursString === "24/7") return true;
+
+	const now = new Date();
+	const dayMap = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+	const currentDay = dayMap[now.getDay()];
+	const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+	// Simplified parser for ranges like "Mo-Fr 08:30-12:30,13:30-17:30" or "Sa 09:00-12:00"
+	// and "Mo-Su 06:00-22:00"
+	const segments = openingHoursString.split(";").map(s => s.trim());
+
+	for (const segment of segments) {
+		if (segment.includes("off")) continue; // Days off
+
+		// Check if current day is covered
+		const [daysPart, timesPart] = segment.split(" ", 2);
+		if (!daysPart || !timesPart) continue;
+
+		let dayMatch = false;
+		if (daysPart.includes(currentDay)) {
+			dayMatch = true;
+		} else if (daysPart.includes("-")) {
+			const [startDay, endDay] = daysPart.split("-");
+			const startIdx = dayMap.indexOf(startDay);
+			const endIdx = dayMap.indexOf(endDay);
+			const currIdx = dayMap.indexOf(currentDay);
+
+			if (startIdx !== -1 && endIdx !== -1 && currIdx !== -1) {
+				if (endIdx >= startIdx) {
+					dayMatch = currIdx >= startIdx && currIdx <= endIdx;
+				} else {
+					// Wrap around not commonly handled in simple Mo-Fr syntax but possible
+					dayMatch = currIdx >= startIdx || currIdx <= endIdx; 
+				}
+			}
+		}
+
+		if (dayMatch) {
+			// Check times
+			const timeRanges = timesPart.split(",");
+			for (const range of timeRanges) {
+				const [start, end] = range.split("-");
+				if (!start || !end) continue;
+
+				const [startH, startM] = start.split(":").map(Number);
+				const [endH, endM] = end.split(":").map(Number);
+
+				const startTotal = startH * 60 + startM;
+				const endTotal = endH * 60 + endM;
+
+				if (currentMinutes >= startTotal && currentMinutes <= endTotal) {
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
 }

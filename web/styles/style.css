@@ -59,6 +59,12 @@ select {
 	border: 0;
 }
 
+.disabled-visual {
+	opacity: 0.5;
+	cursor: not-allowed !important;
+	pointer-events: none;
+}
+
 #map {
 	position: fixed;
 	inset: 0;
@@ -269,6 +275,43 @@ search.destination-wrapper {
 	justify-content: space-between;
 	font-size: 0.75rem;
 	color: var(--muted);
+}
+
+.filter-control {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	padding: 0.75rem;
+	background: var(--card);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+	margin-top: 1rem;
+}
+
+.filter-header {
+	font-size: 0.875rem;
+	font-weight: 500;
+	margin-bottom: 0.25rem;
+}
+
+.filter-group {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.filter-checkbox {
+	width: 1.125rem;
+	height: 1.125rem;
+	accent-color: var(--primary);
+	cursor: pointer;
+	margin: 0;
+}
+
+.filter-group label {
+	font-size: 0.875rem;
+	cursor: pointer;
+	user-select: none;
 }
 
 .results-section {
