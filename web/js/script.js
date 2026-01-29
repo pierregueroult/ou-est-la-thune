@@ -236,24 +236,23 @@ function setupClickOnClosestCashPoints(closestCashPoints) {
 
 		const badgeEl = card.querySelector(".distance-badge");
 		if (badgeEl) {
-			badgeEl.style.cursor = "pointer";
 			badgeEl.title = "Cliquer pour lancer l'itinéraire";
 
 			badgeEl.addEventListener("click", async (e) => {
 				e.stopPropagation();
 				const originalText = badgeEl.textContent;
-				badgeEl.textContent = "...";
-				badgeEl.style.pointerEvents = "none";
-
+				badgeEl.disabled = true;
+				badgeEl.classList.add("loading");
+				badgeEl.innerHTML = '<span class="btn-spinner"></span>Calcul...';
 				try {
-					await itineraryCalcul(globalUserPosition, feature.geometry.coordinates, globalMap);
-					setTimeout(() => feature._layer?.openPopup(), 600);
+					await showItinerary(feature);
 				} catch (error) {
 					console.error("Erreur lors du calcul de l'itinéraire:", error);
 					alert("Impossible de calculer l'itinéraire");
 				} finally {
+					badgeEl.disabled = false;
+					badgeEl.classList.remove("loading");
 					badgeEl.textContent = originalText;
-					badgeEl.style.pointerEvents = "auto";
 				}
 			});
 		}

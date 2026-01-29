@@ -22,11 +22,7 @@
 
 	<figure id="map-loader" class="map-loader" role="status" aria-live="polite">
 		<figcaption class="map-loader-content">
-			<svg class="map-loader-spinner" xmlns="http://www.w3.org/2000/svg" width="32" height="32"
-				viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-				stroke-linejoin="round" aria-hidden="true">
-				<path d="M21 12a9 9 0 1 1-6.219-8.56" />
-			</svg>
+			<div class="spinner spinner-lg spinner-primary"></div>
 			<span>Chargement des distributeurs...</span>
 		</figcaption>
 	</figure>
@@ -75,12 +71,7 @@
 					<div class="radius-label-wrapper">
 						<label for="selected_radius">Ajuster le rayon :</label>
 						<div class="radius-value-wrapper">
-							<svg id="radius-loader" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-								viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-								stroke-linecap="round" stroke-linejoin="round" class="radius-loader hidden"
-								aria-hidden="true" role="status">
-								<path d="M21 12a9 9 0 1 1-6.219-8.56" />
-							</svg>
+							<div id="radius-loader" class="spinner spinner-sm spinner-primary hidden" role="status" aria-hidden="true"></div>
 							<output id="radius-value" class="radius-value" for="selected_radius">2km</output>
 						</div>
 					</div>
@@ -108,7 +99,7 @@
 							<h3 class="bank-name skeleton"></h3>
 							<span class="bank-city skeleton"></span>
 						</div>
-						<div class="distance-badge skeleton"></div>
+						<button class="distance-badge skeleton"></div>
 					</div>
 				</li>
 
@@ -118,7 +109,7 @@
 							<h3 class="bank-name skeleton"></h3>
 							<span class="bank-city skeleton"></span>
 						</div>
-						<div class="distance-badge skeleton"></div>
+						<button class="distance-badge skeleton"></div>
 					</div>
 				</li>
 
@@ -128,7 +119,7 @@
 							<h3 class="bank-name skeleton"></h3>
 							<span class="bank-city skeleton"></span>
 						</div>
-						<div class="distance-badge skeleton"></div>
+						<button class="distance-badge skeleton"></div>
 					</div>
 				</li>
 			</ul>
