@@ -337,16 +337,14 @@ function setupFilterControl() {
 
 function setSidebarInputsDisabled(disabled) {
 	const sidebar = document.querySelector(".sidebar");
-	if (!sidebar) return;
-
 	const inputs = sidebar.querySelectorAll("input, button, select");
+
 	inputs.forEach(el => {
-		if (el.id === "selected_radius") return; // Skip radius slider
+		if (el.id === "selected_radius") return;
 
 		el.disabled = disabled;
 		if (disabled) {
 			el.classList.add("disabled-visual");
-			// For labels wrapping inputs or specialized containers
 			const parent = el.closest(".filter-group, .radius-control"); 
 			if (parent && !parent.classList.contains("radius-control")) {
 				parent.style.opacity = "0.5";

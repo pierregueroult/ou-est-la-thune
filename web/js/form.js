@@ -72,8 +72,6 @@ function matchesTime(expr, nowMinutes) {
 	return false;
 }
 
-
-
 function updateStartPointDisplay() {
 	if (globalUserPosition) {
 		const [lat, lng] = globalUserPosition;
