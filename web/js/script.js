@@ -396,8 +396,18 @@ function setupItineraryEvent() {
 	document.getElementById("btn-stop-itinerary").addEventListener("click", async () => {
 		document.getElementById("sidebar").style.display = "flex";
 		document.getElementById("itinerary-sidebar").style.display = "none";
-		globalMap.removeLayer(globalItineraryLayer);
-		globalItineraryLayer = null;
+		
+		if (globalItineraryLayer) {
+			globalMap.removeLayer(globalItineraryLayer);
+			globalItineraryLayer = null;
+		}
+		
+		if (globalDestinationMarker) {
+			globalMap.removeLayer(globalDestinationMarker);
+			globalDestinationMarker = null;
+		}
+
+		globalItineraryTarget = null;
 		await updateUserLocation();
 	});
 }
