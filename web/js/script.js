@@ -156,12 +156,28 @@ function defineClosestCashPoints(data, userPosition) {
 
 function printClosestCashPoints(closestCashPoints) {
 	const cards = document.getElementsByClassName("card-left");
+	const noResultsEl = document.getElementById("no-results");
 
-	for (let i = 0; i < closestCashPoints.length; i++) {
-		if (!cards[i]) continue;
+	if (closestCashPoints.length === 0) {
+		noResultsEl.classList.remove("hidden");
+	} else {
+		noResultsEl.classList.add("hidden");
+	}
+
+	for (let i = 0; i < cards.length; i++) {
+		const card = cards[i];
+		const cardContainer = card.closest(".card");
+
+		if (i >= closestCashPoints.length) {
+			// No data for this slot, hide the card
+			if (cardContainer) cardContainer.style.display = "none";
+			continue;
+		}
+
+		// Has data, show and update card
+		if (cardContainer) cardContainer.style.display = "block";
 
 		const { feature, distance } = closestCashPoints[i];
-		const card = cards[i];
 
 		const nameEl = card.querySelector(".bank-name");
 		const cityEl = card.querySelector(".bank-city");
