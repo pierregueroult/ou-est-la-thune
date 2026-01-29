@@ -263,16 +263,16 @@ function setupClickOnClosestCashPoints(closestCashPoints) {
 		const card = cards[i];
 		const { feature } = closestCashPoints[i];
 
-		card.addEventListener("click", () => {
+		card.onclick = () => {
 			globalMap.once("moveend", () => feature._layer.openPopup());
 			globalMap.setView(feature.geometry.coordinates, 18);
-		});
+		};
 
 		const badgeEl = card.querySelector(".distance-badge");
 		if (badgeEl) {
 			badgeEl.title = "Cliquer pour lancer l'itinéraire";
 
-			badgeEl.addEventListener("click", async (e) => {
+			badgeEl.onclick = async (e) => {
 				e.stopPropagation();
 				const originalText = badgeEl.textContent;
 				badgeEl.disabled = true;
@@ -291,7 +291,7 @@ function setupClickOnClosestCashPoints(closestCashPoints) {
 					badgeEl.textContent = originalText;
 					setSidebarInputsDisabled(false);
 				}
-			});
+			};
 		}
 	}
 }
