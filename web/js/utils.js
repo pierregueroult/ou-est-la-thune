@@ -91,5 +91,10 @@ function getOpeningHoursHTML(openingHoursString) {
         rowsHTML += `<tr><td class="hours-day">${daysPart}</td><td class="hours-time">${hoursPart}</td></tr>`;
     }
 
-    return rowsHTML ? `<table class="hours-table">${rowsHTML}</table>` : "";
+    	return rowsHTML ? `<table class="hours-table">${rowsHTML}</table>` : "";
+}
+
+function isAccessible(feature) {
+	const access = feature.properties.wheelchair;
+	return access === "yes";
 }
