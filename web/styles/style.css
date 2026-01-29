@@ -59,6 +59,12 @@ select {
 	border: 0;
 }
 
+.disabled-visual {
+	opacity: 0.5;
+	cursor: not-allowed !important;
+	pointer-events: none;
+}
+
 #map {
 	position: fixed;
 	inset: 0;
@@ -271,12 +277,97 @@ search.destination-wrapper {
 	color: var(--muted);
 }
 
+.filter-control {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	padding: 1rem;
+	background: var(--card);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+}
+
+.filter-group {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-direction: row-reverse;
+	cursor: pointer;
+}
+
+.filter-checkbox {
+	appearance: none;
+	width: 2.75rem;
+	height: 1.5rem;
+	background: var(--bg-hover);
+	border-radius: 2rem;
+	position: relative;
+	cursor: pointer;
+	transition: background 0.2s;
+	border: 1px solid var(--border);
+	flex-shrink: 0;
+	margin: 0;
+}
+
+.filter-checkbox:checked {
+	background: var(--primary);
+	border-color: var(--primary);
+}
+
+.filter-checkbox::after {
+	content: '';
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 18px;
+	height: 18px;
+	background: white;
+	border-radius: 50%;
+	transition: transform 0.2s;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.filter-checkbox:checked::after {
+	transform: translateX(1.275rem);
+}
+
+.filter-group label {
+	font-size: 0.9375rem;
+	font-weight: 500;
+	cursor: pointer;
+	user-select: none;
+	color: var(--bg-fg);
+	flex: 1;
+}
+
 .results-section {
 	display: flex;
 	flex-direction: column;
-	gap: 1rem;
 	flex: 1;
 	overflow: hidden;
+}
+
+.no-results {
+	padding: 1.5rem;
+	text-align: center;
+	background: var(--card);
+	border-radius: var(--radius);
+	border: 1px dashed var(--border);
+	color: var(--muted);
+}
+
+.no-results.hidden {
+	display: none;
+}
+
+.no-results p {
+	margin: 0 0 0.5rem;
+	font-weight: 500;
+	color: var(--bg-fg);
+}
+
+.no-results small {
+	font-size: 0.8125rem;
 }
 
 .section-header h2 {
@@ -295,6 +386,7 @@ search.destination-wrapper {
 	gap: 0.75rem;
 	overflow-y: auto;
 	padding-right: 0.25rem;
+	margin-top: 1rem;
 }
 
 .card-list::-webkit-scrollbar {

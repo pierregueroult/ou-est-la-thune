@@ -92,6 +92,18 @@
 					</div>
 				</fieldset>
 
+				<fieldset class="filter-control">
+					<legend class="visually-hidden">Options de filtrage</legend>
+					<div class="filter-group">
+						<input type="checkbox" id="filter-access" class="filter-checkbox" />
+						<label for="filter-access">Accès handicapé</label>
+					</div>
+					<div class="filter-group">
+						<input type="checkbox" id="filter-open" class="filter-checkbox" />
+						<label for="filter-open">Ouvert maintenant</label>
+					</div>
+				</fieldset>
+
 				<hr class="divider" />
 			</form>
 		</section>
@@ -132,6 +144,11 @@
 					</div>
 				</li>
 			</ul>
+			
+			<div id="no-results" class="no-results hidden">
+				<p>Aucun distributeur ne correspond à vos critères dans ce rayon.</p>
+				<small>Essayez d'augmenter le rayon ou de modifier les filtres.</small>
+			</div>
 		</section>
 	</aside>
 

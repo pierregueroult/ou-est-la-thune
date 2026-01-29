@@ -10,6 +10,21 @@ let globalItineraryLayer = null;
 let globalItineraryTarget = null;
 let globalDestinationMarker = null;
 let globalPositionIntervalId = null;
+let globalFilterAccess = false;
+let globalFilterOpen = false;
+
+function isFeatureVisible(feature, userPosition, radiusMeters) {
+	if (distanceMeters(userPosition, feature.geometry.coordinates) > radiusMeters) return false;
+	if (globalFilterAccess && !isAccessible(feature)) return false;
+	
+	if (globalFilterOpen) {
+		const p = feature.properties;
+		const hours = p.opening_hours || (p.type === "atm" ? "24/7" : null);
+		if (!isOpenCashPoint(hours)) return false;
+	}
+	
+	return true;
+}
 
 function createIcon(feature) {
 	const iconUrl = feature.properties.type === "atm" ? URLS.MARKER_ATM : URLS.MARKER_BANK;
@@ -100,8 +115,9 @@ function addEventOnPoint(feature) {
 	itineraryBtn.addEventListener("click", async () => {
 		const originalText = itineraryBtn.textContent;
 		itineraryBtn.disabled = true;
-		itineraryBtn.classList.add("loading");
+			itineraryBtn.classList.add("loading");
 		itineraryBtn.innerHTML = '<span class="btn-spinner"></span>Calcul en cours...';
+		setSidebarInputsDisabled(true);
 
 		try {
 			await showItinerary(feature);
@@ -112,6 +128,7 @@ function addEventOnPoint(feature) {
 			itineraryBtn.disabled = false;
 			itineraryBtn.classList.remove("loading");
 			itineraryBtn.innerHTML = originalText;
+			setSidebarInputsDisabled(false);
 		}
 	});
 
@@ -120,7 +137,7 @@ function addEventOnPoint(feature) {
 
 function createGeoLayer(data, userPosition, radiusMeters) {
 	return L.geoJSON(data, {
-		filter: (feature) => distanceMeters(userPosition, feature.geometry.coordinates) <= radiusMeters,
+		filter: (feature) => isFeatureVisible(feature, userPosition, radiusMeters),
 		pointToLayer: (feature) => L.marker(feature.geometry.coordinates, { icon: createIcon(feature) }),
 		onEachFeature: (feature, layer) => {
 			feature._layer = layer;
@@ -131,6 +148,7 @@ function createGeoLayer(data, userPosition, radiusMeters) {
 
 function defineClosestCashPoints(data, userPosition) {
 	return data.features
+		.filter(feature => isFeatureVisible(feature, userPosition, globalRadiusMeters))
 		.map((feature) => ({ feature, distance: distanceMeters(userPosition, feature.geometry.coordinates) }))
 		.sort((a, b) => a.distance - b.distance)
 		.slice(0, CONSTANTS.TOP_CLOSEST_POINTS);
@@ -138,12 +156,28 @@ function defineClosestCashPoints(data, userPosition) {
 
 function printClosestCashPoints(closestCashPoints) {
 	const cards = document.getElementsByClassName("card-left");
+	const noResultsEl = document.getElementById("no-results");
 
-	for (let i = 0; i < closestCashPoints.length; i++) {
-		if (!cards[i]) continue;
+	if (closestCashPoints.length === 0) {
+		noResultsEl.classList.remove("hidden");
+	} else {
+		noResultsEl.classList.add("hidden");
+	}
+
+	for (let i = 0; i < cards.length; i++) {
+		const card = cards[i];
+		const cardContainer = card.closest(".card");
+
+		if (i >= closestCashPoints.length) {
+			// No data for this slot, hide the card
+			if (cardContainer) cardContainer.style.display = "none";
+			continue;
+		}
+
+		// Has data, show and update card
+		if (cardContainer) cardContainer.style.display = "block";
 
 		const { feature, distance } = closestCashPoints[i];
-		const card = cards[i];
 
 		const nameEl = card.querySelector(".bank-name");
 		const cityEl = card.querySelector(".bank-city");
@@ -244,6 +278,7 @@ function setupClickOnClosestCashPoints(closestCashPoints) {
 				const originalText = badgeEl.textContent;
 				badgeEl.textContent = "...";
 				badgeEl.style.pointerEvents = "none";
+				setSidebarInputsDisabled(true);
 
 				try {
 					await itineraryCalcul(globalUserPosition, feature.geometry.coordinates, globalMap);
@@ -254,10 +289,76 @@ function setupClickOnClosestCashPoints(closestCashPoints) {
 				} finally {
 					badgeEl.textContent = originalText;
 					badgeEl.style.pointerEvents = "auto";
+					setSidebarInputsDisabled(false);
 				}
 			});
 		}
 	}
+}
+
+function updateMap() {
+	if (globalGeoLayer) {
+		globalMap.removeLayer(globalGeoLayer);
+		globalGeoLayer = null;
+	}
+
+	if (globalItineraryLayer) {
+		globalMap.removeLayer(globalItineraryLayer);
+		globalItineraryLayer = null;
+	}
+
+	globalGeoLayer = createGeoLayer(globalData, globalUserPosition, globalRadiusMeters);
+	globalGeoLayer.addTo(globalMap);
+	globalCircle.setRadius(globalRadiusMeters);
+
+	globalClosestCashPoints = defineClosestCashPoints(globalData, globalUserPosition);
+	printClosestCashPoints(globalClosestCashPoints);
+	setupClickOnClosestCashPoints(globalClosestCashPoints);
+}
+
+function setupFilterControl() {
+	const accessCheckbox = document.getElementById("filter-access");
+	const openCheckbox = document.getElementById("filter-open");
+
+	if (accessCheckbox) {
+		accessCheckbox.addEventListener("change", (e) => {
+			globalFilterAccess = e.target.checked;
+			updateMap();
+		});
+	}
+
+	if (openCheckbox) {
+		openCheckbox.addEventListener("change", (e) => {
+			globalFilterOpen = e.target.checked;
+			updateMap();
+		});
+	}
+}
+
+function setSidebarInputsDisabled(disabled) {
+	const sidebar = document.querySelector(".sidebar");
+	const inputs = sidebar.querySelectorAll("input, button, select");
+
+	inputs.forEach(el => {
+		if (el.id === "selected_radius") return;
+
+		el.disabled = disabled;
+		if (disabled) {
+			el.classList.add("disabled-visual");
+			const parent = el.closest(".filter-group, .radius-control"); 
+			if (parent && !parent.classList.contains("radius-control")) {
+				parent.style.opacity = "0.5";
+				parent.style.cursor = "not-allowed";
+			}
+		} else {
+			el.classList.remove("disabled-visual");
+			const parent = el.closest(".filter-group");
+			if (parent) {
+				parent.style.opacity = "1";
+				parent.style.cursor = "default";
+			}
+		}
+	});
 }
 
 function setupRadiusControl() {
@@ -267,21 +368,7 @@ function setupRadiusControl() {
 
 	const updateRadius = (newRadiusMeters) => {
 		globalRadiusMeters = newRadiusMeters;
-
-		if (globalGeoLayer) {
-			globalMap.removeLayer(globalGeoLayer);
-			globalGeoLayer = null;
-		}
-
-		if (globalItineraryLayer) {
-			globalMap.removeLayer(globalItineraryLayer);
-			globalItineraryLayer = null;
-		}
-
-		globalGeoLayer = createGeoLayer(globalData, globalUserPosition, globalRadiusMeters);
-		globalGeoLayer.addTo(globalMap);
-		globalCircle.setRadius(globalRadiusMeters);
-
+		updateMap();
 		radiusLoader.classList.add("hidden");
 	};
 
@@ -348,6 +435,7 @@ window.onload = async () => {
 		printClosestCashPoints(globalClosestCashPoints);
 
 		setupRadiusControl();
+		setupFilterControl();
 		setupClickOnClosestCashPoints(globalClosestCashPoints);
 		globalMap.whenReady(setupForm);
 		startPositionAutoUpdate();
