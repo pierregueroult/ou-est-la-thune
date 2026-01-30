@@ -11,7 +11,7 @@ let globalItineraryTarget = null;
 let globalDestinationMarker = null;
 let globalPositionIntervalId = null;
 let globalFilterAccess = false;
-let globalFilterOpen = false;
+let globalFilterOpen = true;
 
 function isFeatureVisible(feature, userPosition, radiusMeters) {
 	if (distanceMeters(userPosition, feature.geometry.coordinates) > radiusMeters) return false;
@@ -418,6 +418,8 @@ const hideMapLoader = () => document.getElementById("map-loader")?.classList.add
 
 window.onload = async () => {
 	globalRadiusMeters = parseInt(document.getElementById("selected_radius").value, 10);
+	const filterOpenEl = document.getElementById("filter-open");
+	if (filterOpenEl) globalFilterOpen = filterOpenEl.checked;
 
 	const tiles = createTileLayer();
 	globalUserPosition = await getLocation();
