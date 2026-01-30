@@ -197,23 +197,18 @@ function setupForm() {
 		try {
 			const atms = getAvailableATMs();
 
-			const openCandidates = atms
-				.filter((atm) => {
-					const p = atm.feature.properties;
-					const isATM = p.type === "atm";
-					return isATM || isOpenCashPoint(p.opening_hours);
-				})
+			const candidates = atms
 				.map((atm) => ({
 					feature: atm.feature,
 					distance: distanceMeters(atm.coords, globalUserPosition),
 				}))
 				.sort((a, b) => a.distance - b.distance);
 
-			const closestOpen = openCandidates[0];
+			const closest = candidates[0];
 
-			if (!closestOpen) throw new Error("Aucun distributeur proche n'est ouvert.");
+			if (!closest) throw new Error("Aucun distributeur trouvé.");
 
-			await showItinerary(closestOpen.feature);
+			await showItinerary(closest.feature);
 		} catch (error) {
 			console.error("Erreur lors du calcul de l'itinéraire:", error);
 			alert("Impossible de calculer l'itinéraire");
