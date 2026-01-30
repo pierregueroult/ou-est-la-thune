@@ -40,6 +40,7 @@ function createIcon(feature) {
 
 function createUserMarker(userPosition) {
 	return L.marker(userPosition, {
+		zIndexOffset: 1000,
 		icon: new L.Icon({
 			iconUrl: URLS.MARKER_USER,
 			iconSize: [40, 40],
